@@ -714,6 +714,8 @@ function fetchLiveScores() {
     .then(function(data) {
       var games = data.games || [];
       console.log('API games reçus:', games.length);
+      // Filtrer uniquement les matchs de la CDM 2026 (type group ou knockout)
+      games = games.filter(function(g){ return g.type === 'group' || g.type === 'knockout' || g.type === 'final'; });
       games.forEach(function(game) {
         var t1en = game.home_team_name_en || '';
         var t2en = game.away_team_name_en || '';
