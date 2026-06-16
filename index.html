@@ -713,8 +713,8 @@ function fetchLiveScores() {
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var games = data.games || [];
+      console.log('API games reçus:', games.length);
       games.forEach(function(game) {
-        // Trouver le match correspondant dans MATCHES
         var t1en = game.home_team_name_en || '';
         var t2en = game.away_team_name_en || '';
         var t1fr = NAME_FR[t1en] || t1en;
@@ -725,7 +725,11 @@ function fetchLiveScores() {
                  (m.team2.name === t2fr || m.team2.name === t2en);
         });
         
-        if (!match) return;
+        if (!match) {
+          console.log('Match non trouvé:', t1en, 'vs', t2en, '→', t1fr, 'vs', t2fr);
+          return;
+        }
+        console.log('Match trouvé:', match.id, t1fr, 'vs', t2fr, game.home_score, '-', game.away_score);
         
         // Mettre à jour le statut
         if (game.finished === 'TRUE') {
