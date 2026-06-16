@@ -420,6 +420,14 @@ var CU = null, CL = null, CM = null, CP = {};
 var realResults = {};
 var leaguePronos = {};
 
+// ── BARÈME DES POINTS ────────────────────────────────────────
+var PTS = {
+  exactScore:10, result:3, totalGoals:4,
+  scorer:5, firstScorer:7, motm:5,
+  corners:3, freekicks:2, fouls:2, yellows:2, reds:4, penalties:3,
+  bonusCombo:10, bonusFullHouse:25
+};
+
 // ── BALLDONTLIE FIFA API ─────────────────────────────────────
 const BDL_KEY = '1e6f3246-b795-44a3-af74-cab832032647';
 const BDL = 'https://api.balldontlie.io/fifa/worldcup/v1';
