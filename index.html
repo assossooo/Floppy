@@ -789,6 +789,13 @@ function initFB(){
   try{
     if(!firebase.apps.length) firebase.initializeApp(FB);
     db=firebase.firestore(); auth=firebase.auth(); fbReady=true;
+    // Capturer le retour après redirect Google
+    auth.getRedirectResult().then(function(result){
+      if(result && result.user){
+        CU=result.user; loadUserData();
+      }
+    }).catch(function(e){ console.warn('redirect result:', e.message); });
+    // Observer auth state
     auth.onAuthStateChanged(function(u){
       if(u){ CU=u; loadUserData(); }
       else { showScreen('auth'); }
@@ -831,8 +838,11 @@ function showScreen(s){
 
 // ── AUTH ──────────────────────────────────────────────────────
 async function signInGoogle(){
-  if(!fbReady){demoMode();return;}
-  try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}catch(e){toast('❌ '+e.message);}
+  if(!fbReady){ showScreen('auth'); return; }
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithRedirect(provider);
+  }catch(e){ toast('❌ '+e.message); }
 }
 async function doSignOut(){if(fbReady)await auth.signOut();CU=null;CL=null;showScreen('auth');}
 
