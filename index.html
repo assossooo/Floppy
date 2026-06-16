@@ -698,11 +698,13 @@ function fetchMatches() {
   renderMatches(); renderAdmin(); renderCmpSel();
   // BDL en arrière-plan silencieux
   if (window.location.protocol === 'https:') {
-    setTimeout(function(){
-      fetch(BDL+'/matches?per_page=1', {headers:BDL_HEADERS})
-        .then(function(r){ if(r.ok) fetchMatchesBDL(); })
-        .catch(function(){});
-    }, 3000);
+    // Forcer BDL immédiatement pour avoir les vrais scores
+    fetch(BDL+'/matches?per_page=1', {headers:BDL_HEADERS})
+      .then(function(r){
+        if(r.ok){ console.log('BDL OK, chargement...'); fetchMatchesBDL(); }
+        else { console.warn('BDL HTTP '+r.status); }
+      })
+      .catch(function(e){ console.warn('BDL erreur:',e.message); });
   }
   } catch(e) {
     window.onerror('fetchMatches: '+e.message,'',1,1,e);
@@ -1003,18 +1005,25 @@ function renderMatches(){
     });
   }catch(e){}
 
-  // Grouper par groupe
-  var groups={};
-  MATCHES.forEach(function(m){
-    if(!groups[m.group]) groups[m.group]=[];
-    groups[m.group].push(m);
+  // Trier par date puis heure
+  var sorted = MATCHES.slice().sort(function(a,b){
+    var da = a.date+'T'+a.time, db2 = b.date+'T'+b.time;
+    return da < db2 ? -1 : da > db2 ? 1 : 0;
   });
 
-  Object.keys(groups).forEach(function(grp){
-    var t=document.createElement('div');
-    t.className='stitle';t.textContent=grp;c.appendChild(t);
+  // Grouper par jour
+  var days={}, dayOrder=[];
+  sorted.forEach(function(m){
+    if(!days[m.date]){ days[m.date]=[]; dayOrder.push(m.date); }
+    days[m.date].push(m);
+  });
 
-    groups[grp].forEach(function(m){
+  dayOrder.forEach(function(day){
+    var d=new Date(day+'T12:00:00Z');
+    var label=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    label=label.charAt(0).toUpperCase()+label.slice(1);
+    var t=document.createElement('div');t.className='stitle';t.textContent=label;c.appendChild(t);
+    days[day].forEach(function(m){
       try{
         var prono=userPronos[m.id];
         var res=realResults[m.id];
