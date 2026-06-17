@@ -1569,6 +1569,12 @@ function renderLeagueInfo(){
 // ── PROFIL ────────────────────────────────────────────────────
 function renderProfile(){
   if(!CU) return;
+  dbg('rP start, checking DOM...');
+  var tabEl = document.getElementById('tab-profil');
+  dbg('tab-profil: '+(tabEl?'OK':'MISSING')+' hidden:'+(tabEl?tabEl.classList.contains('hidden'):'?'));
+  var nameEl2 = document.getElementById('profileName');
+  var ptsEl2 = document.getElementById('statPts');
+  dbg('profileName:'+(nameEl2?'OK':'MISSING')+' statPts:'+(ptsEl2?'OK':'MISSING'));
   // Avatar
   var av = (CU&&CU.photoURL) || avUrl((CU&&CU.displayName)||'?');
   var avEl = document.getElementById('profileAv');
