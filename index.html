@@ -247,6 +247,32 @@ body{font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;ba
 .card,.scard,.rank-item{background:var(--grad-navy);border:1px solid var(--border)}
 /* Chips premium */
 .chip.s-sc,.chip.s-fs,.chip.s-mo{background:var(--grad-gold);color:#0a0e1a;font-weight:700;border-color:var(--gold)}
+
+/* ═══ BOUTONS AUTH MULTIPLES ═══ */
+.btn-auth{width:100%;max-width:340px;padding:14px;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:transform .15s;margin-bottom:9px}
+.btn-auth:active{transform:scale(.97)}
+.btn-auth .auth-ico{font-size:19px;width:22px;text-align:center}
+.btn-google{background:#fff;color:#1a1a2e}
+.btn-google img{width:20px;height:20px}
+.btn-apple{background:#000;color:#fff;border:1px solid rgba(255,255,255,.2)}
+.btn-apple .auth-ico{font-size:20px}
+.btn-twitter{background:#000;color:#fff;border:1px solid rgba(255,255,255,.2)}
+.btn-twitter .auth-ico{font-weight:900;font-size:18px}
+.btn-email{background:var(--surface2);color:var(--text);border:1px solid var(--border-gold)}
+.auth-divider{display:flex;align-items:center;gap:12px;max-width:340px;width:100%;margin:6px 0 12px;color:var(--text2);font-size:12px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Modal email */
+.email-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.email-overlay.open{display:flex}
+.email-modal{background:var(--grad-navy);border:1px solid var(--border-gold);border-radius:20px;padding:26px 22px;width:100%;max-width:360px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.email-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer}
+.email-title{font-size:22px;font-weight:900;margin-bottom:18px;color:var(--gold)}
+.email-input{width:100%;padding:13px 15px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:#fff;font-size:15px;margin-bottom:11px}
+.email-input:focus{outline:none;border-color:var(--gold)}
+.email-submit{width:100%;padding:14px;background:var(--grad-gold);color:#0a0e1a;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:4px}
+.email-submit:active{transform:scale(.98)}
+.email-switch{margin-top:16px;text-align:center;font-size:13px;color:var(--text2)}
+.email-switch button{background:none;border:none;color:var(--gold);font-weight:700;cursor:pointer;text-decoration:underline;font-size:13px}
 </style>
 </head>
 <body>
@@ -265,12 +291,40 @@ body{font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;ba
     <div class="auth-feat"><span class="ico">👀</span><div><strong>Comparaison des pronos</strong>Voir ce qu'ont misé tes amis</div></div>
     <div class="auth-feat"><span class="ico">🔔</span><div><strong>Notifications</strong>Rappels avant fermeture</div></div>
   </div>
-  <button class="btn-google" onclick="signInGoogle()">
-    <img src="https://www.google.com/favicon.ico" alt="G">Continuer avec Google
+  <button class="btn-auth btn-google" onclick="signInGoogle()">
+    <img src="https://www.google.com/favicon.ico" alt="G"><span>Continuer avec Google</span>
   </button>
-  <button onclick="guestMode()" style="background:none;border:none;color:var(--text2);font-size:13px;margin-top:8px;cursor:pointer;text-decoration:underline;">
+  <!-- Apple et X masqués temporairement (config développeur requise)
+  <button class="btn-auth btn-apple" onclick="signInApple()">
+    <span class="auth-ico"></span><span>Continuer avec Apple</span>
+  </button>
+  <button class="btn-auth btn-twitter" onclick="signInTwitter()">
+    <span class="auth-ico">𝕏</span><span>Continuer avec X</span>
+  </button>
+  -->
+  <div class="auth-divider"><span>ou</span></div>
+  <button class="btn-auth btn-email" onclick="showEmailAuth()">
+    <span class="auth-ico">✉️</span><span>Email & mot de passe</span>
+  </button>
+  <button onclick="guestMode()" style="background:none;border:none;color:var(--text2);font-size:13px;margin-top:10px;cursor:pointer;text-decoration:underline;">
     👀 Mode invité (test sans compte)
   </button>
+
+  <!-- Modal Email/MDP -->
+  <div id="emailAuthOverlay" class="email-overlay">
+    <div class="email-modal">
+      <button class="email-close" onclick="closeEmailAuth()">✕</button>
+      <div class="email-title" id="emailTitle">Connexion</div>
+      <input class="email-input" type="text" id="emailPseudo" placeholder="Pseudo" style="display:none">
+      <input class="email-input" type="email" id="emailAddr" placeholder="Email" autocomplete="email">
+      <input class="email-input" type="password" id="emailPass" placeholder="Mot de passe" autocomplete="current-password">
+      <button class="email-submit" id="emailSubmit" onclick="submitEmailAuth()">Se connecter</button>
+      <div class="email-switch">
+        <span id="emailSwitchTxt">Pas encore de compte ?</span>
+        <button onclick="toggleEmailMode()" id="emailSwitchBtn">Créer un compte</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="setupScreen">
@@ -1093,6 +1147,92 @@ function signInGoogle(){
     // Dernier recours
     try { auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); } 
     catch(e2){ toast('❌ '+e.message); }
+  }
+}
+
+function signInApple(){
+  if(!fbReady){ toast('⚠️ Firebase non prêt'); return; }
+  try{
+    var provider = new firebase.auth.OAuthProvider('apple.com');
+    provider.addScope('email'); provider.addScope('name');
+    auth.signInWithPopup(provider).then(function(result){
+      CU = result.user; loadUserData();
+    }).catch(function(e){
+      if(e.code==='auth/popup-blocked'||e.code==='auth/cancelled-popup-request'){
+        auth.signInWithRedirect(provider);
+      } else { toast('❌ '+(e.message||'Erreur Apple')); }
+    });
+  }catch(e){ toast('❌ '+e.message); }
+}
+
+function signInTwitter(){
+  if(!fbReady){ toast('⚠️ Firebase non prêt'); return; }
+  try{
+    var provider = new firebase.auth.TwitterAuthProvider();
+    auth.signInWithPopup(provider).then(function(result){
+      CU = result.user; loadUserData();
+    }).catch(function(e){
+      if(e.code==='auth/popup-blocked'||e.code==='auth/cancelled-popup-request'){
+        auth.signInWithRedirect(provider);
+      } else { toast('❌ '+(e.message||'Erreur X')); }
+    });
+  }catch(e){ toast('❌ '+e.message); }
+}
+
+// ── EMAIL / MOT DE PASSE ─────────────────────────────────────
+var _emailMode = 'login'; // 'login' ou 'signup'
+function showEmailAuth(){
+  document.getElementById('emailAuthOverlay').classList.add('open');
+}
+function closeEmailAuth(){
+  document.getElementById('emailAuthOverlay').classList.remove('open');
+}
+function toggleEmailMode(){
+  _emailMode = _emailMode === 'login' ? 'signup' : 'login';
+  var isSignup = _emailMode === 'signup';
+  document.getElementById('emailTitle').textContent = isSignup ? 'Créer un compte' : 'Connexion';
+  document.getElementById('emailPseudo').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('emailSubmit').textContent = isSignup ? 'Créer mon compte' : 'Se connecter';
+  document.getElementById('emailSwitchTxt').textContent = isSignup ? 'Déjà un compte ?' : 'Pas encore de compte ?';
+  document.getElementById('emailSwitchBtn').textContent = isSignup ? 'Se connecter' : 'Créer un compte';
+}
+function submitEmailAuth(){
+  if(!fbReady){ toast('⚠️ Firebase non prêt'); return; }
+  var email = document.getElementById('emailAddr').value.trim();
+  var pass = document.getElementById('emailPass').value;
+  var pseudo = document.getElementById('emailPseudo').value.trim();
+  if(!email || !pass){ toast('❌ Remplis tous les champs'); return; }
+  if(pass.length < 6){ toast('❌ Mot de passe : 6 caractères min'); return; }
+  
+  var btn = document.getElementById('emailSubmit');
+  btn.disabled = true; btn.textContent = '⏳...';
+  
+  if(_emailMode === 'signup'){
+    if(!pseudo){ toast('❌ Choisis un pseudo'); btn.disabled=false; btn.textContent='Créer mon compte'; return; }
+    auth.createUserWithEmailAndPassword(email, pass).then(function(cred){
+      return cred.user.updateProfile({displayName: pseudo}).then(function(){
+        CU = cred.user;
+        closeEmailAuth();
+        loadUserData();
+      });
+    }).catch(function(e){
+      btn.disabled=false; btn.textContent='Créer mon compte';
+      var msg = e.code === 'auth/email-already-in-use' ? 'Email déjà utilisé' :
+                e.code === 'auth/invalid-email' ? 'Email invalide' : e.message;
+      toast('❌ '+msg);
+    });
+  } else {
+    auth.signInWithEmailAndPassword(email, pass).then(function(cred){
+      CU = cred.user;
+      closeEmailAuth();
+      loadUserData();
+    }).catch(function(e){
+      btn.disabled=false; btn.textContent='Se connecter';
+      var msg = e.code === 'auth/wrong-password' ? 'Mot de passe incorrect' :
+                e.code === 'auth/user-not-found' ? 'Compte introuvable' :
+                e.code === 'auth/invalid-credential' ? 'Identifiants incorrects' : e.message;
+      toast('❌ '+msg);
+    });
   }
 }
 async function doSignOut(){if(fbReady)await auth.signOut();CU=null;CL=null;showScreen('auth');}
