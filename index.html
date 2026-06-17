@@ -352,6 +352,15 @@ body{background:#fafaf7!important}
 .edit-pseudo-btn{margin-top:8px;background:rgba(201,162,39,.1);border:1px solid var(--border-gold);color:var(--gold2);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer}
 .btn-danger{width:100%;padding:13px;background:#fff;color:var(--red);border:1.5px solid rgba(214,48,49,.3);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px}
 .btn-danger:active{background:rgba(214,48,49,.05)}
+
+/* Profil - forcer visibilité */
+#tab-profil{color:var(--ink)!important}
+#tab-profil .prof-name{color:#1a1a1a!important;font-size:21px;font-weight:900}
+#tab-profil .prof-league{color:var(--gold2)!important}
+#tab-profil .scard{background:#fff!important;border:1px solid #e0d9c8!important}
+#tab-profil .scard-v{color:var(--gold)!important;font-size:20px;font-weight:900}
+#tab-profil .scard-l{color:#666!important;font-size:10px}
+#tab-profil .stitle{color:var(--gold2)!important}
 </style>
 </head>
 <body>
@@ -551,7 +560,7 @@ body{background:#fafaf7!important}
       </div>
     </div>
 
-    <div id="tab-profil" class="hidden">
+    <div id="tab-profil" class="hidden" style="background:#fafaf7;min-height:60vh;padding:16px">
       <div class="prof-hero">
         <div class="prof-av-wrap">
           <img class="prof-av" id="profileAv" src="" alt="">
@@ -1569,12 +1578,6 @@ function renderLeagueInfo(){
 // ── PROFIL ────────────────────────────────────────────────────
 function renderProfile(){
   if(!CU) return;
-  dbg('rP start, checking DOM...');
-  var tabEl = document.getElementById('tab-profil');
-  dbg('tab-profil: '+(tabEl?'OK':'MISSING')+' hidden:'+(tabEl?tabEl.classList.contains('hidden'):'?'));
-  var nameEl2 = document.getElementById('profileName');
-  var ptsEl2 = document.getElementById('statPts');
-  dbg('profileName:'+(nameEl2?'OK':'MISSING')+' statPts:'+(ptsEl2?'OK':'MISSING'));
   // Avatar
   var av = (CU&&CU.photoURL) || avUrl((CU&&CU.displayName)||'?');
   var avEl = document.getElementById('profileAv');
