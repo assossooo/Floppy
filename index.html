@@ -31,7 +31,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;background:#fafaf7;color:var(--text);min-height:100vh;overflow-x:hidden}
 /* SPLASH */
-#splash{position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#splash{position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:splashOut 0.4s ease 2s forwards}
 .splash-ball{width:80px;height:80px;background:radial-gradient(circle at 35% 35%,#fff 0%,var(--gold) 45%,#b8860b 100%);border-radius:50%;box-shadow:0 0 50px rgba(245,197,24,.4);animation:bp 1.4s ease-in-out infinite}
 @keyframes bp{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.1) rotate(8deg)}}
 .splash-logo{font-size:36px;font-weight:900;letter-spacing:-1.5px}.splash-logo span{color:var(--gold)}
@@ -333,6 +333,11 @@ body{background:#fafaf7!important}
 .nav-ico svg{width:23px;height:23px;color:var(--text2);transition:color .18s,transform .18s}
 .nav-item.active .nav-ico svg{color:var(--gold)}
 .nav-item.active .nav-ico{transform:scale(1.1)}
+
+@keyframes splashOut{
+  0%{opacity:1;pointer-events:all}
+  100%{opacity:0;pointer-events:none;visibility:hidden}
+}
 </style>
 </head>
 <body>
@@ -1152,19 +1157,25 @@ function hideSplash(){
 
 var _preloadedScores = null;
 
-document.addEventListener('DOMContentLoaded', function(){
-  // Lancer Firebase immédiatement
+// Lancer Firebase dès que possible (plusieurs méthodes de sécurité)
+function startApp(){
+  if(startApp._done) return;
+  startApp._done = true;
+  hideSplash();
   initFB();
-  // Précharger les scores en arrière-plan
   try {
     fetch('https://floppy-proxy.jeremyassolen.workers.dev/games')
       .then(function(r){ return r.json(); })
       .then(function(d){ _preloadedScores = d; })
       .catch(function(){});
   } catch(e){}
-  // Cacher le splash après 1s
-  setTimeout(hideSplash, 1000);
-});
+}
+startApp._done = false;
+
+document.addEventListener('DOMContentLoaded', startApp);
+window.addEventListener('load', startApp);
+// Sécurité absolue : si rien n'a marché après 3s, forcer
+setTimeout(startApp, 3000);
 
 function initFB(){
   var fbScripts=[
