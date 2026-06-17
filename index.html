@@ -718,12 +718,24 @@ function buildMatchesFromEmbedded() {
   MATCHES = CDM2026.map(function(m,i) {
     const t1 = teamDisplay(m.t1);
     const t2 = teamDisplay(m.t2);
-    // Convertir heure UTC en timezone utilisateur
-    let localDt = {date:m.d, time:m.t};
+    // Convertir heure UTC → timezone locale de l'utilisateur
+    var localDt = {date:m.d, time:m.t};
     try {
-      // Les heures sont en heure locale USA (ET/CT/PT selon le stade)
-      // On les affiche telles quelles sans conversion pour éviter les erreurs
-      localDt = {date: m.d, time: m.t};
+      var tStr = m.t.length === 4 ? '0'+m.t : m.t;
+      var utcDate = new Date(m.d + 'T' + tStr + ':00Z');
+      if (!isNaN(utcDate.getTime())) {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        var parts = new Intl.DateTimeFormat('fr-FR',{
+          timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
+          hour:'2-digit', minute:'2-digit', hour12:false
+        }).formatToParts(utcDate);
+        var p = {};
+        parts.forEach(function(x){ p[x.type]=x.value; });
+        localDt = {
+          date: p.year+'-'+p.month+'-'+p.day,
+          time: p.hour+':'+p.minute
+        };
+      }
     } catch(e) {}
     const entry = {
       id:'m'+String(i+1).padStart(2,'0'),
@@ -765,14 +777,15 @@ function fetchMatches() {
 }
 
 function fetchLiveScores() {
-  // Utiliser le cache préchargé si dispo (affichage immédiat)
+  // Appliquer immédiatement le cache préchargé (scores visibles tout de suite)
   if (_preloadedScores) {
     try { processLiveScores(_preloadedScores); } catch(e){}
-    _preloadedScores = null;
   }
+  // Puis rafraîchir depuis l'API
   fetch(PROXY + '/games')
     .then(function(r){ return r.json(); })
     .then(function(data) {
+      _preloadedScores = data;
       processLiveScores(data);
     })
     .catch(function(e){ console.warn('worldcup26 erreur:', e.message); });
@@ -784,22 +797,23 @@ function processLiveScores(data) {
       console.log('API games reçus:', games.length);
       // Filtrer uniquement les matchs de la CDM 2026 (type group ou knockout)
       games = games.filter(function(g){ return g.type === 'group' || g.type === 'knockout' || g.type === 'final'; });
+      // Normaliser pour comparaison (enlever accents, minuscules)
+      function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,''); }
       games.forEach(function(game) {
         var t1en = game.home_team_name_en || '';
         var t2en = game.away_team_name_en || '';
         var t1fr = NAME_FR[t1en] || t1en;
         var t2fr = NAME_FR[t2en] || t2en;
+        var n1en=norm(t1en), n2en=norm(t2en), n1fr=norm(t1fr), n2fr=norm(t2fr);
         
         var match = MATCHES.find(function(m) {
-          return (m.team1.name === t1fr || m.team1.name === t1en) &&
-                 (m.team2.name === t2fr || m.team2.name === t2en);
+          var mn1=norm(m.team1.name), mn2=norm(m.team2.name);
+          var team1ok = (mn1===n1en || mn1===n1fr);
+          var team2ok = (mn2===n2en || mn2===n2fr);
+          return team1ok && team2ok;
         });
         
-        if (!match) {
-          console.log('Match non trouvé:', t1en, 'vs', t2en, '→', t1fr, 'vs', t2fr);
-          return;
-        }
-        console.log('Match trouvé:', match.id, t1fr, 'vs', t2fr, game.home_score, '-', game.away_score);
+        if (!match) return;
         
         // Mettre à jour le statut
         if (game.finished === 'TRUE') {
@@ -962,7 +976,7 @@ window.onload=function(){
   setTimeout(function(){
     hideSplash();
     initFB();
-  },1500);
+  },800);
 };
 
 function initFB(){
@@ -1060,26 +1074,26 @@ function signInGoogle(){
   try{
     var provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // Détecter PWA standalone (iOS ou Android)
-    var isPWA = window.navigator.standalone === true ||
-                window.matchMedia('(display-mode: standalone)').matches;
-    if(isPWA){
-      // En PWA, redirect est la seule méthode fiable
-      auth.signInWithRedirect(provider);
-    } else {
-      // Sur navigateur normal, popup
-      auth.signInWithPopup(provider).then(function(result){
-        CU = result.user;
-        loadUserData();
-      }).catch(function(e){
-        if(e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request'){
-          auth.signInWithRedirect(provider);
-        } else {
-          toast('❌ '+e.message);
-        }
-      });
-    }
-  }catch(e){ toast('❌ '+e.message); }
+    // signInWithPopup fonctionne mieux que redirect sur iOS PWA standalone
+    // (le redirect iOS standalone perd la session et ne reconnecte pas)
+    auth.signInWithPopup(provider).then(function(result){
+      CU = result.user;
+      loadUserData();
+    }).catch(function(e){
+      // Si popup bloquée/échoue, fallback redirect
+      if(e.code === 'auth/popup-blocked' || 
+         e.code === 'auth/cancelled-popup-request' ||
+         e.code === 'auth/operation-not-supported-in-this-environment'){
+        auth.signInWithRedirect(provider);
+      } else {
+        toast('❌ '+(e.message||'Erreur connexion'));
+      }
+    });
+  }catch(e){ 
+    // Dernier recours
+    try { auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); } 
+    catch(e2){ toast('❌ '+e.message); }
+  }
 }
 async function doSignOut(){if(fbReady)await auth.signOut();CU=null;CL=null;showScreen('auth');}
 
