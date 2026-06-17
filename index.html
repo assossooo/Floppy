@@ -338,6 +338,20 @@ body{background:#fafaf7!important}
   0%{opacity:1;pointer-events:all}
   100%{opacity:0;pointer-events:none;visibility:hidden}
 }
+
+/* ═══ PROFIL AMÉLIORÉ ═══ */
+.prof-av-wrap{position:relative;width:86px;height:86px;margin:0 auto 12px}
+.prof-av{width:86px;height:86px;border-radius:50%;border:3px solid var(--gold);object-fit:cover;display:block}
+.prof-name{font-size:22px;font-weight:900;color:var(--ink);margin-bottom:2px}
+.prof-pseudo{font-size:13px;color:var(--text2);margin-bottom:4px}
+.prof-league{color:var(--gold2);font-size:12px;font-weight:700;margin-bottom:10px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.scard{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 6px;text-align:center;box-shadow:var(--shadow)}
+.scard-v{font-size:22px;font-weight:900;color:var(--gold)}
+.scard-l{font-size:10px;color:var(--text2);margin-top:2px;font-weight:600}
+.edit-pseudo-btn{margin-top:8px;background:rgba(201,162,39,.1);border:1px solid var(--border-gold);color:var(--gold2);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-danger{width:100%;padding:13px;background:#fff;color:var(--red);border:1.5px solid rgba(214,48,49,.3);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn-danger:active{background:rgba(214,48,49,.05)}
 </style>
 </head>
 <body>
@@ -539,15 +553,20 @@ body{background:#fafaf7!important}
 
     <div id="tab-profil" class="hidden">
       <div class="prof-hero">
-        <img class="prof-av" id="profileAv" src="" alt="">
+        <div class="prof-av-wrap">
+          <img class="prof-av" id="profileAv" src="" alt="">
+        </div>
         <div class="prof-name" id="profileName"></div>
+        <div class="prof-pseudo" id="profilePseudo"></div>
         <div class="prof-league" id="profileLeague"></div>
         <button class="edit-pseudo-btn" onclick="editPseudo()">✏️ Changer mon pseudo</button>
       </div>
       <div class="stats-grid">
         <div class="scard"><div class="scard-v" id="statPts">0</div><div class="scard-l">Points</div></div>
-        <div class="scard"><div class="scard-v" id="statPronos">0</div><div class="scard-l">Pronos</div></div>
         <div class="scard"><div class="scard-v" id="statRank">—</div><div class="scard-l">Rang</div></div>
+        <div class="scard"><div class="scard-v" id="statBons">0</div><div class="scard-l">Bons pronos</div></div>
+        <div class="scard"><div class="scard-v" id="statPct">—</div><div class="scard-l">Réussite</div></div>
+        <div class="scard"><div class="scard-v" id="statPronos">0</div><div class="scard-l">Total pronos</div></div>
       </div>
       <div class="stitle">Mes badges</div>
       <div class="card" style="padding:12px"><div class="bdg-row" id="userBadges"></div></div>
@@ -1132,8 +1151,8 @@ async function fetchLineup(match) {
     // On récupère depuis les matchs raw - stocker teamIds
     const home = lineup.filter(l => l.is_home);
     const away = lineup.filter(l => !l.is_home);
-    match.players1 = home.map(l => l.player?.short_name || l.player?.name || '?');
-    match.players2 = away.map(l => l.player?.short_name || l.player?.name || '?');
+    match.players1 = home.map(l => (l.player&&l.player.short_name) || (l.player&&l.player.name) || '?');
+    match.players2 = away.map(l => (l.player&&l.player.short_name) || (l.player&&l.player.name) || '?');
   } catch(e) { console.warn('Lineup fetch failed:', e.message); }
 }
 
@@ -1270,12 +1289,12 @@ function loadResults(){
 // ── INIT APP ─────────────────────────────────────────────────
 function avUrl(n){ return 'https://ui-avatars.com/api/?name='+encodeURIComponent(n)+'&background=111d2e&color=f0b429&bold=true'; }
 function initApp(){
-  document.getElementById('leaguePill').textContent=CL?.name||'—';
-  var av=CU?.photoURL||avUrl(CU?.displayName||'U');
+  document.getElementById('leaguePill').textContent=((CL&&CL.name))||'—';
+  var av=((CU&&CU.photoURL))||avUrl(((CU&&CU.displayName))||'U');
   document.getElementById('userAvatar').src=av;
   document.getElementById('profileAv').src=av;
-  document.getElementById('profileName').textContent=CU?.displayName||'';
-  document.getElementById('pseudoInput').value=CU?.displayName||'';
+  document.getElementById('profileName').textContent=((CU&&CU.displayName))||'';
+  document.getElementById('pseudoInput').value=((CU&&CU.displayName))||'';
   document.getElementById('profileLeague').textContent=CL?'🏆 '+CL.name:'';
   checkNotif(); renderRanking(); renderLeagueInfo(); renderAdmin(); renderProfile();
 }
@@ -1401,7 +1420,7 @@ function renderChips(m){
 function updPts(){
   var max=PTS.exactScore+PTS.result+PTS.totalGoals;
   if(CP.firstScorer)max+=PTS.firstScorer;
-  max+=(CP.scorers?.length||0)*PTS.scorer;
+  max+=((CP.scorers&&CP.scorers.length)||0)*PTS.scorer;
   if(CP.motm)max+=PTS.motm;
   max+=PTS.corners+PTS.freekicks+PTS.fouls+PTS.yellows+PTS.reds+(CM&&CM.isKnockout?PTS.penalties:0)+PTS.bonusCombo;
   document.getElementById('ptsPrev').textContent=max+' pts max';
@@ -1512,7 +1531,7 @@ async function renderCmp(m){
   if(!pronos.length){ h+='<div style="text-align:center;padding:28px;color:var(--text2)">Aucun prono pour ce match.</div>'; c.innerHTML=h; return; }
   h+='<div class="stitle">Pronos des membres</div><div class="card"><table class="cmp-table"><thead><tr><th>Membre</th><th>Score</th><th>Buteurs</th><th>1er</th>'+(r?'<th>Pts</th>':'')+'</tr></thead><tbody>';
   pronos.forEach(function(p){
-    var isMe=p.userId===CU?.uid; var pts=r?calcPts(p,r):null; var pc=pts==null?'':pts>=20?'hi':pts>=8?'md':pts>0?'lo':'ze';
+    var isMe=p.userId===((CU&&CU.uid)); var pts=r?calcPts(p,r):null; var pc=pts==null?'':pts>=20?'hi':pts>=8?'md':pts>0?'lo':'ze';
     var sc=''; if(r){ if(p.score[0]===r.score[0]&&p.score[1]===r.score[1])sc='c'; else{ var res2=function(a,b){ return a>b?'W':a<b?'L':'D'; }; sc=res2(p.score[0],p.score[1])===res2(r.score[0],r.score[1])?'cl':'w'; } }
     var bText=(p.scorers||[]).join(', ')||'—';
     var tdPts=r?'<td><span class="ptschip '+pc+'">'+(pts!=null?'+'+pts:'—')+'</span></td>':'';
@@ -1529,7 +1548,7 @@ function renderRanking(){
   if(!CL){ c.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><div class="empty-title">Pas de ligue</div></div>'; return; }
   var sorted=(CL.members||[]).map(function(uid){ return {uid,name:(CL.memberNames||{})[uid]||'Joueur',photo:(CL.memberPhotos||{})[uid]||'',pts:(CL.memberPoints||{})[uid]||0}; }).sort(function(a,b){ return b.pts-a.pts; });
   sorted.forEach(function(m,i){
-    var isMe=m.uid===CU?.uid, pc=i===0?'rp1':i===1?'rp2':i===2?'rp3':'rpN', av=m.photo||avUrl(m.name);
+    var isMe=m.uid===((CU&&CU.uid)), pc=i===0?'rp1':i===1?'rp2':i===2?'rp3':'rpN', av=m.photo||avUrl(m.name);
     var d=document.createElement('div'); d.className='rank-item'+(isMe?' me':'');
     d.innerHTML='<div class="rpos '+pc+'">'+(i+1)+'</div><div class="rinfo"><div class="rname">'+m.name+(isMe?' <span style="color:var(--gold);font-size:9px">(moi)</span>':'')+'</div><div class="rsub">Rang #'+(i+1)+'</div></div><div class="rpts"><div class="rpv">'+m.pts+'</div><div class="rpl">points</div></div>';
     var img2=document.createElement('img');img2.className='rav';img2.src=av;(function(u){img2.onerror=function(){this.src=u;};})(av);d.insertBefore(img2,d.children[1]);
@@ -1548,12 +1567,43 @@ function renderLeagueInfo(){
 
 // ── PROFIL ────────────────────────────────────────────────────
 function renderProfile(){
-  var myPts=(CL?.memberPoints||{})[CU?.uid]||0;
-  var sorted=(CL?.members||[]).map(function(uid){ return {uid,pts:(CL?.memberPoints||{})[uid]||0}; }).sort(function(a,b){ return b.pts-a.pts; });
-  var myRank=sorted.findIndex(function(m){ return m.uid===CU?.uid; })+1;
-  document.getElementById('statPts').textContent=myPts;
-  document.getElementById('statRank').textContent=myRank>0?'#'+myRank:'—';
-  document.getElementById('statPronos').textContent=MATCHES.length;
+  dbg('renderProfile CU='+JSON.stringify(CU&&CU.uid)+' CL='+JSON.stringify(CL&&CL.name));
+  if(!CU){ dbg('CU null - abort'); return; }
+  // Avatar
+  var av = (CU&&CU.photoURL) || avUrl((CU&&CU.displayName)||'?');
+  var avEl = document.getElementById('profileAv');
+  if(avEl){ avEl.src = av; avEl.onerror = function(){ this.src=avUrl((CU&&CU.displayName)||'?'); }; }
+  // Nom et pseudo
+  var nameEl = document.getElementById('profileName');
+  var pseudoEl = document.getElementById('profilePseudo');
+  var leagueEl = document.getElementById('profileLeague');
+  var displayName = (CU&&CU.displayName) || 'Joueur';
+  if(nameEl) nameEl.textContent = displayName;
+  if(pseudoEl) pseudoEl.textContent = '';
+  if(leagueEl) leagueEl.textContent = CL ? '🏆 ' + CL.name : '';
+  // Stats
+  var myPts = ((CL&&CL.memberPoints)||{})[CU&&CU.uid] || 0;
+  var sorted = ((CL&&CL.members)||[]).map(function(uid){ return {uid:uid,pts:((CL&&CL.memberPoints)||{})[uid]||0}; }).sort(function(a,b){ return b.pts-a.pts; });
+  var myRank = sorted.findIndex(function(m){ return m.uid===(CU&&CU.uid); })+1;
+  // Compter les bons pronos depuis localStorage
+  var totalPronos = 0, bonsPronos = 0;
+  MATCHES.forEach(function(m){
+    var key = 'mfm_'+(CL?CL.id:'')+'_'+(CU?CU.uid:'')+'_'+m.id;
+    try {
+      var v = localStorage.getItem(key);
+      if(v){ 
+        totalPronos++;
+        var p = JSON.parse(v);
+        if(p.points && p.points > 0) bonsPronos++;
+      }
+    } catch(e){}
+  });
+  var pct = totalPronos > 0 ? Math.round(bonsPronos/totalPronos*100)+'%' : '—';
+  document.getElementById('statPts').textContent = myPts;
+  document.getElementById('statRank').textContent = myRank>0?'#'+myRank:'—';
+  document.getElementById('statBons').textContent = bonsPronos;
+  document.getElementById('statPct').textContent = pct;
+  document.getElementById('statPronos').textContent = totalPronos;
   var BDGS=[{ico:'⚡',nm:'Flash',earned:true},{ico:'🔮',nm:'Oracle',earned:myPts>=30},{ico:'🎯',nm:'Sniper',earned:myPts>=50},{ico:'🔥',nm:'En feu',earned:myPts>=80},{ico:'🏆',nm:'Champion',earned:myRank===1},{ico:'💎',nm:'Diamant',earned:false}];
   document.getElementById('userBadges').innerHTML=BDGS.map(function(b){ return '<div class="bdg'+(b.earned?' earned':' locked')+'"><div class="bdg-ico">'+b.ico+'</div><div class="bdg-nm">'+b.nm+'</div></div>'; }).join('');
 }
@@ -1587,8 +1637,8 @@ function showTab(n){
   document.querySelectorAll('[id^="tab-"]').forEach(function(el){ el.classList.add('hidden'); });
   document.querySelectorAll('.tab,.nav-item').forEach(function(el){ el.classList.remove('active'); });
   var el=document.getElementById('tab-'+n); if(el)el.classList.remove('hidden');
-  document.querySelector('.tab[data-tab="'+n+'"]')?.classList.add('active');
-  document.querySelector('.nav-item[data-nav="'+n+'"]')?.classList.add('active');
+  var ta=document.querySelector('.tab[data-tab="'+n+'"]'); if(ta)ta.classList.add('active');
+  var na=document.querySelector('.nav-item[data-nav="'+n+'"]'); if(na)na.classList.add('active');
   if(n==='compare')renderCmpSel(); if(n==='classement')renderRanking(); if(n==='profil')renderProfile();
 }
 
@@ -1630,6 +1680,16 @@ function initFB(){
     document.head.appendChild(s);
   });
 }
+
+// Debug overlay
+function dbg(msg){
+  var d=document.getElementById('dbg-overlay');
+  if(!d){d=document.createElement('div');d.id='dbg-overlay';
+    d.style.cssText='position:fixed;bottom:80px;left:10px;right:10px;background:rgba(0,0,0,.88);color:#0f0;font-size:10px;font-family:monospace;padding:8px;border-radius:8px;z-index:9998;max-height:160px;overflow:auto';
+    document.body.appendChild(d);}
+  d.innerHTML+='<div>'+new Date().toLocaleTimeString()+' '+msg+'</div>';
+}
+window.onerror=function(msg,src,line){dbg('ERR L'+line+': '+msg);return false;};
 
 function initFBCore(){
   try{
@@ -1763,6 +1823,7 @@ function toggleEmailMode(){
   document.getElementById('emailSwitchBtn').textContent = isSignup ? 'Se connecter' : 'Créer un compte';
 }
 function submitEmailAuth(){
+  dbg('submitEmail fbReady='+fbReady+' auth='+(typeof auth));
   if(!fbReady){
     // Attendre Firebase (max 8s, toutes les 500ms)
     var attempts = 0;
@@ -1860,7 +1921,7 @@ function initApp(){
   if(adminTab){ adminTab.style.display = isRealAdmin ? '' : 'none'; }
   document.getElementById('userAvatar').src=av;
   document.getElementById('profileAv').src=av;
-  document.getElementById('profileName').textContent=CU?.displayName||'';
+  document.getElementById('profileName').textContent=((CU&&CU.displayName))||'';
   document.getElementById('profileLeague').textContent=CL?'🏆 '+CL.name:'';
   checkNotif();renderMatches();renderRanking();renderLeagueInfo();renderAdmin();renderCmpSel();renderProfile();
 }
