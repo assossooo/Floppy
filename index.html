@@ -1155,28 +1155,450 @@ function hideSplash(){
   if(s) s.style.display='none';
 }
 
-var _preloadedScores = null;
 
 // Lancer Firebase dès que possible (plusieurs méthodes de sécurité)
-function startApp(){
-  if(startApp._done) return;
-  startApp._done = true;
-  hideSplash();
-  initFB();
-  try {
-    fetch('https://floppy-proxy.jeremyassolen.workers.dev/games')
+window.onload = function() {
+  // Précharger les scores API avant d'afficher
+  if (window.location.protocol === 'https:') {
+    buildMatchesFromEmbedded();
+    // Sécurité : masquer le splash après 3s max même si l'API ne répond pas
+    var _splashTimer = setTimeout(function(){ hideSplash(); initFB(); }, 3000);
+    fetch(PROXY + '/games')
       .then(function(r){ return r.json(); })
-      .then(function(d){ _preloadedScores = d; })
-      .catch(function(){});
-  } catch(e){}
+      .then(function(data){
+        // Injecter scores avant affichage
+        var games = (data.games||[]).filter(function(g){ return g.type==='group'||g.type==='knockout'||g.type==='final'; });
+        games.forEach(function(game){
+          if(game.finished!=='TRUE') return;
+          var t1fr = NAME_FR[game.home_team_name_en]||game.home_team_name_en;
+          var t2fr = NAME_FR[game.away_team_name_en]||game.away_team_name_en;
+          var match = MATCHES.find(function(m){ return m.team1.name===t1fr && m.team2.name===t2fr; });
+          if(!match) return;
+          function parseScorers(str){ if(!str||str==='null') return []; return str.replace(/[{}"]/g,'').split(',').map(function(s){ return s.replace(/\s+\d+['+].*$/,'').trim(); }).filter(Boolean); }
+          var sc1=parseScorers(game.home_scorers), sc2=parseScorers(game.away_scorers);
+          realResults[match.id]={matchId:match.id,score:[parseInt(game.home_score)||0,parseInt(game.away_score)||0],scorers:sc1.concat(sc2),firstScorer:sc1.concat(sc2)[0]||null,motm:null,penalties:false,stats:{corners:0,freekicks:0,fouls:0,yellows:0,reds:0,penalties:false},fromApi:true};
+          match.status='completed';
+        });
+      })
+      .catch(function(){})
+      .finally(function(){ clearTimeout(_splashTimer); hideSplash(); initFB(); });
+  } else {
+    setTimeout(function(){ hideSplash(); initFB(); }, 1500);
+  }
+};
+
+function initFB() {
+  var fbScripts=['https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js','https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'];
+  var loaded=0, errored=false;
+  function onLoad(){ loaded++; if(loaded===fbScripts.length&&!errored){ try{initFBCore();}catch(e){showScreen('auth');} } }
+  function onErr(){ if(errored)return; errored=true; showScreen('auth'); }
+  setTimeout(function(){ if(loaded<fbScripts.length){ errored=true; showScreen('auth'); } },5000);
+  fbScripts.forEach(function(src){ var s=document.createElement('script'); s.src=src; s.crossOrigin='anonymous'; s.onload=onLoad; s.onerror=onErr; document.head.appendChild(s); });
 }
-startApp._done = false;
 
-document.addEventListener('DOMContentLoaded', startApp);
-window.addEventListener('load', startApp);
-// Sécurité absolue : si rien n'a marché après 3s, forcer
-setTimeout(startApp, 3000);
+function initFBCore() {
+  try {
+    if(!firebase.apps.length) firebase.initializeApp(FB);
+    db=firebase.firestore(); auth=firebase.auth(); fbReady=true;
+    auth.getRedirectResult().then(function(result){
+      if(result&&result.user){ CU=result.user; loadUserData(); }
+    }).catch(function(e){ console.warn('redirect:',e.message); });
+    auth.onAuthStateChanged(function(u){ if(u){ CU=u; loadUserData(); } else{ showScreen('auth'); } });
+  }catch(e){ showScreen('auth'); }
+}
 
+// ── SCREENS ──────────────────────────────────────────────────
+function showScreen(s) {
+  ['authScreen','setupScreen','app'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+  if(s==='auth') document.getElementById('authScreen').style.display='flex';
+  else if(s==='setup') document.getElementById('setupScreen').style.display='flex';
+  else { document.getElementById('app').style.display='flex'; document.getElementById('app').style.flexDirection='column'; initApp(); fetchMatches().then(function(){ startAutoRefresh(); }); }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+function signInGoogle() {
+  if(!fbReady){ showScreen('auth'); return; }
+  try {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    var isPWA = window.navigator.standalone === true;
+    if(isPWA) {
+      auth.signInWithRedirect(provider);
+    } else {
+      auth.signInWithPopup(provider).then(function(result){ CU=result.user; loadUserData(); }).catch(function(e){ auth.signInWithRedirect(provider); });
+    }
+  } catch(e){ toast('❌ '+e.message); }
+}
+async function doSignOut(){ if(fbReady)await auth.signOut(); CU=null; CL=null; showScreen('auth'); }
+function guestMode(){ CU={uid:'guest',displayName:'Invité',photoURL:''}; CL={id:'guest',name:'Ligue Test',code:'MFM-TEST',members:['guest'],memberNames:{'guest':'Invité'},memberPhotos:{},memberPoints:{'guest':0},createdBy:'guest'}; showScreen('app'); }
+
+// ── LEAGUE ───────────────────────────────────────────────────
+function genCode(){ var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return 'MFM-'+Array.from({length:4},function(){ return c[Math.floor(Math.random()*c.length)]; }).join(''); }
+async function createLeague(){
+  var name=document.getElementById('newLeagueName').value.trim();
+  if(!name){ toast('⚠️ Saisis un nom'); return; }
+  var code=genCode();
+  var d={name,code,members:[CU.uid],memberNames:{[CU.uid]:CU.displayName},memberPhotos:{[CU.uid]:CU.photoURL||''},memberPoints:{[CU.uid]:0},createdBy:CU.uid,createdAt:fbReady?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString()};
+  try{ var r=await db.collection('leagues').add(d); CL={id:r.id,...d}; showScreen('app'); toast('🎉 Ligue créée ! Code : '+code); }catch(e){ toast('❌ '+e.message); }
+}
+async function joinLeagueByCode(){
+  var code=document.getElementById('joinCode').value.trim().toUpperCase();
+  if(!code){ toast('⚠️ Saisis un code'); return; }
+  try{
+    var s=await db.collection('leagues').where('code','==',code).limit(1).get();
+    if(s.empty){ toast('❌ Code introuvable'); return; }
+    var doc=s.docs[0];
+    await db.collection('leagues').doc(doc.id).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid),['memberNames.'+CU.uid]:CU.displayName,['memberPhotos.'+CU.uid]:CU.photoURL||'',['memberPoints.'+CU.uid]:0});
+    CL={id:doc.id,...doc.data()}; showScreen('app'); toast('✅ Ligue rejointe !');
+  }catch(e){ toast('❌ '+e.message); }
+}
+async function leaveLeague(){
+  if(!confirm('Quitter la ligue ?'))return;
+  try{ if(fbReady)await db.collection('leagues').doc(CL.id).update({members:firebase.firestore.FieldValue.arrayRemove(CU.uid)}); CL=null; showScreen('setup'); }catch(e){ toast('❌ '+e.message); }
+}
+function loadUserData(){
+  if(!fbReady||!CU)return;
+  db.collection('leagues').where('members','array-contains',CU.uid).limit(1).get().then(function(s){
+    if(!s.empty){ CL={id:s.docs[0].id}; var d=s.docs[0].data(); Object.keys(d).forEach(function(k){ CL[k]=d[k]; }); loadResults(); }
+    else{ showScreen('setup'); }
+  }).catch(function(){ showScreen('setup'); });
+}
+function loadResults(){
+  if(!fbReady)return;
+  db.collection('results').where('leagueId','==',CL.id).get().then(function(s){ s.forEach(function(d){ realResults[d.data().matchId]=d.data(); }); showScreen('app'); }).catch(function(){ showScreen('app'); });
+}
+
+// ── INIT APP ─────────────────────────────────────────────────
+function avUrl(n){ return 'https://ui-avatars.com/api/?name='+encodeURIComponent(n)+'&background=111d2e&color=f0b429&bold=true'; }
+function initApp(){
+  document.getElementById('leaguePill').textContent=CL?.name||'—';
+  var av=CU?.photoURL||avUrl(CU?.displayName||'U');
+  document.getElementById('userAvatar').src=av;
+  document.getElementById('profileAv').src=av;
+  document.getElementById('profileName').textContent=CU?.displayName||'';
+  document.getElementById('pseudoInput').value=CU?.displayName||'';
+  document.getElementById('profileLeague').textContent=CL?'🏆 '+CL.name:'';
+  checkNotif(); renderRanking(); renderLeagueInfo(); renderAdmin(); renderProfile();
+}
+
+// ── PSEUDO ───────────────────────────────────────────────────
+function showPseudoEdit(){
+  var box=document.getElementById('pseudoEditBox');
+  box.classList.toggle('hidden');
+}
+async function savePseudo(){
+  var newName=document.getElementById('pseudoInput').value.trim();
+  if(!newName){ toast('⚠️ Pseudo vide'); return; }
+  if(CU){ CU.displayName=newName; }
+  if(fbReady&&CL){
+    try{
+      await db.collection('leagues').doc(CL.id).update({['memberNames.'+CU.uid]:newName});
+      if(CL.memberNames) CL.memberNames[CU.uid]=newName;
+    }catch(e){}
+  }
+  document.getElementById('profileName').textContent=newName;
+  document.getElementById('pseudoEditBox').classList.add('hidden');
+  toast('✅ Pseudo mis à jour !');
+  renderRanking(); renderLeagueInfo();
+}
+
+// ── MATCHES RENDER ───────────────────────────────────────────
+function renderMatches(){
+  var c=document.getElementById('matchesList');
+  if(!c)return;
+  c.innerHTML='';
+  var userPronos={};
+  try{ MATCHES.forEach(function(m){ var v=localStorage.getItem('mfm_'+(CL?CL.id:'')+'-'+(CU?CU.uid:'')+'-'+m.id); if(v)userPronos[m.id]=JSON.parse(v); }); }catch(e){}
+  var sorted=MATCHES.slice().sort(function(a,b){ var da=a.date+'T'+a.time,db2=b.date+'T'+b.time; return da<db2?-1:da>db2?1:0; });
+  var days={},dayOrder=[];
+  sorted.forEach(function(m){ if(!days[m.date]){ days[m.date]=[]; dayOrder.push(m.date); } days[m.date].push(m); });
+  dayOrder.forEach(function(day){
+    var d=new Date(day+'T12:00:00Z');
+    var label=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    label=label.charAt(0).toUpperCase()+label.slice(1);
+    var t=document.createElement('div'); t.className='stitle'; t.textContent=label; c.appendChild(t);
+    days[day].forEach(function(m){
+      try{
+        var prono=userPronos[m.id], res=realResults[m.id];
+        var now=new Date(), mdt=new Date(m.date+'T'+m.time);
+        var locked=now>=mdt, minsLeft=Math.floor((mdt-now)/60000);
+        var isLive=m.status==='in_progress';
+        var tag='';
+        if(res) tag='<span class="tag tag-done">✅ Terminé</span>';
+        else if(isLive) tag='<span class="tag tag-live"><span class="live-dot"></span> LIVE</span>';
+        else if(locked) tag='<span class="tag tag-locked">🔒 Fermé</span>';
+        else if(minsLeft<120) tag='<span class="tag tag-soon">⚡ '+minsLeft+'min</span>';
+        else tag='<span class="tag tag-open">✏️ Ouvert</span>';
+        var center='';
+        if(res) center='<div class="mlive-score">'+res.score[0]+'–'+res.score[1]+'</div>';
+        else if(isLive&&realResults[m.id]) center='<div class="mlive-score">'+realResults[m.id].score[0]+'–'+realResults[m.id].score[1]+'</div>';
+        else center='<div class="mvs">VS</div>';
+        var ptsEarned='';
+        if(res&&prono&&prono.points!=null){ var pc=prono.points>=20?'hi':prono.points>=8?'md':prono.points>0?'lo':'ze'; ptsEarned='<span class="ptschip '+pc+'">+'+prono.points+'pts</span>'; }
+        var foot=prono?'<div><span class="prono-score">'+prono.score[0]+'–'+prono.score[1]+'</span></div><div style="display:flex;align-items:center;gap:5px"><span style="color:var(--text2);font-size:10px">Prono ✅</span>'+ptsEarned+'</div>':'<div></div><div style="color:var(--text2);font-size:10px">'+(locked?'Aucun prono':'Appuie pour pronostiquer')+'</div>';
+        // Heure locale
+        var timeLabel='';
+        try{ var mlocal=new Date(m.date+'T'+m.time+':00Z'); var tz=Intl.DateTimeFormat().resolvedOptions().timeZone; timeLabel=mlocal.toLocaleTimeString('fr-FR',{timeZone:tz,hour:'2-digit',minute:'2-digit'}); }catch(e){ timeLabel=m.time; }
+        var card=document.createElement('div');
+        card.className='mcard'+(locked?' locked':'');
+        if(!locked){ (function(match,p){ card.onclick=function(){ openModal(match,p); }; })(m,prono); }
+        card.innerHTML='<div class="mcard-head"><span class="grp">'+m.group+'</span><span>'+m.venue+'</span>'+tag+'</div>'
+          +'<div class="mcard-body"><div class="mteam"><span class="fl">'+m.team1.flag+'</span><span class="tn">'+m.team1.name+'</span></div>'+center+'<div class="mteam"><span class="fl">'+m.team2.flag+'</span><span class="tn">'+m.team2.name+'</span></div></div>'
+          +'<div class="mcard-date">📅 '+label+' · '+timeLabel+'</div>'
+          +'<div class="mcard-foot">'+foot+'</div>';
+        c.appendChild(card);
+      }catch(e){ console.warn('renderMatch err:',e.message,m); }
+    });
+  });
+}
+
+// ── MODAL PRONO ──────────────────────────────────────────────
+function openModal(m,existing){
+  var now=new Date();
+  if(now>=new Date(m.date+'T'+m.time)){ toast('🔒 Pronos fermés'); return; }
+  CM=m;
+  CP=existing?JSON.parse(JSON.stringify(existing)):{matchId:m.id,score:[0,0],scorers:[],firstScorer:null,motm:null,stats:{corners:8,freekicks:12,fouls:22,yellows:3,reds:0,penalties:false}};
+  if(!CP.stats) CP.stats={corners:8,freekicks:12,fouls:22,yellows:3,reds:0,penalties:false};
+  document.getElementById('modalTitle').textContent=m.team1.flag+' vs '+m.team2.flag;
+  document.getElementById('mF1').textContent=m.team1.flag; document.getElementById('mN1').textContent=m.team1.name;
+  document.getElementById('mF2').textContent=m.team2.flag; document.getElementById('mN2').textContent=m.team2.name;
+  document.getElementById('sLbl1').textContent=m.team1.name; document.getElementById('sLbl2').textContent=m.team2.name;
+  var dt=new Date(m.date+'T'+m.time);
+  var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var timeStr=dt.toLocaleString('fr-FR',{timeZone:tz,weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('mInfo').textContent='📅 '+timeStr+' · '+m.venue;
+  // Inputs score
+  document.getElementById('sV1').value=CP.score[0];
+  document.getElementById('sV2').value=CP.score[1];
+  // Inputs stats
+  ['corners','freekicks','fouls','yellows','reds'].forEach(function(k){ var el=document.getElementById('sv-'+k); if(el)el.value=CP.stats[k]||0; });
+  document.getElementById('togPen').checked=CP.stats.penalties||false;
+  // Masquer TAB pour phase de groupes
+  document.getElementById('togPenRow').style.display=m.isKnockout?'flex':'none';
+  renderChips(m); updPts();
+  document.getElementById('pronoOverlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('pronoOverlay').classList.remove('open'); }
+document.getElementById('pronoOverlay').addEventListener('click',function(e){ if(e.target===document.getElementById('pronoOverlay'))closeModal(); });
+
+function onScoreInput(){
+  CP.score[0]=parseInt(document.getElementById('sV1').value)||0;
+  CP.score[1]=parseInt(document.getElementById('sV2').value)||0;
+  updPts();
+}
+function onStatInput(key,val){ CP.stats[key]=parseInt(val)||0; updPts(); }
+
+function renderChips(m){
+  var all=[...(m.players1||[]),...(m.players2||[])];
+  if(!all.length){ ['fsChips','scChips','moChips'].forEach(function(id){ document.getElementById(id).innerHTML='<div style="color:var(--text2);font-size:11px">Effectifs disponibles avant le match</div>'; }); return; }
+  var fc=document.getElementById('fsChips'); fc.innerHTML='';
+  all.forEach(function(p){ var ch=document.createElement('div'); ch.className='chip'+(CP.firstScorer===p?' s-fs':''); ch.textContent=p; ch.onclick=function(){ CP.firstScorer=CP.firstScorer===p?null:p; renderChips(m); updPts(); }; fc.appendChild(ch); });
+  var sc=document.getElementById('scChips'); sc.innerHTML='';
+  all.forEach(function(p){ var cnt=(CP.scorers||[]).filter(function(s){ return s===p; }).length; var ch=document.createElement('div'); ch.className='chip'+(cnt>0?' s-sc':''); ch.textContent=cnt>1?p+' (×'+cnt+')':p; ch.onclick=function(){ if(!CP.scorers)CP.scorers=[]; var same=CP.scorers.filter(function(s){ return s===p; }).length; if(same>=3)CP.scorers=CP.scorers.filter(function(s){ return s!==p; }); else CP.scorers.push(p); renderChips(m); updPts(); }; sc.appendChild(ch); });
+  var mc=document.getElementById('moChips'); mc.innerHTML='';
+  all.forEach(function(p){ var ch=document.createElement('div'); ch.className='chip'+(CP.motm===p?' s-mo':''); ch.textContent=p; ch.onclick=function(){ CP.motm=CP.motm===p?null:p; renderChips(m); }; mc.appendChild(ch); });
+}
+
+function updPts(){
+  var max=PTS.exactScore+PTS.result+PTS.totalGoals;
+  if(CP.firstScorer)max+=PTS.firstScorer;
+  max+=(CP.scorers?.length||0)*PTS.scorer;
+  if(CP.motm)max+=PTS.motm;
+  max+=PTS.corners+PTS.freekicks+PTS.fouls+PTS.yellows+PTS.reds+(CM&&CM.isKnockout?PTS.penalties:0)+PTS.bonusCombo;
+  document.getElementById('ptsPrev').textContent=max+' pts max';
+}
+
+async function saveProno(){
+  if(!CM||!CU||!CL){ toast('⚠️ Problème'); return; }
+  var btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='⏳...';
+  var d={...CP,userId:CU.uid,userName:CU.displayName,userPhoto:CU.photoURL||'',leagueId:CL.id,matchId:CM.id,savedAt:fbReady?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString(),points:null};
+  try{
+    if(fbReady) await db.collection('pronos').doc(CL.id+'_'+CU.uid+'_'+CM.id).set(d,{merge:true});
+    else localStorage.setItem('mfm_'+CL.id+'-'+CU.uid+'-'+CM.id,JSON.stringify(d));
+    toast('✅ Prono enregistré !'); closeModal(); renderMatches();
+  }catch(e){ toast('❌ '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; }
+}
+
+// ── CALCUL POINTS ────────────────────────────────────────────
+function calcPts(p,r){
+  if(!r)return null; var pts=0;
+  var pg1=p.score[0],pg2=p.score[1],rg1=r.score[0],rg2=r.score[1];
+  if(pg1===rg1&&pg2===rg2)pts+=PTS.exactScore;
+  var res=function(a,b){ return a>b?'W':a<b?'L':'D'; };
+  if(res(pg1,pg2)===res(rg1,rg2))pts+=PTS.result;
+  if((pg1+pg2)===(rg1+rg2))pts+=PTS.totalGoals;
+  var rs=[...(r.scorers||[])];
+  (p.scorers||[]).forEach(function(s){ var i=rs.indexOf(s); if(i!==-1){ pts+=PTS.scorer; rs.splice(i,1); } });
+  if(p.firstScorer&&p.firstScorer===r.firstScorer)pts+=PTS.firstScorer;
+  if(p.motm&&p.motm===r.motm)pts+=PTS.motm;
+  var s=p.stats||{},rv=r.stats||{};
+  if(Math.abs((s.corners||0)-(rv.corners||0))<=1)pts+=PTS.corners;
+  if(Math.abs((s.freekicks||0)-(rv.freekicks||0))<=2)pts+=PTS.freekicks;
+  if(Math.abs((s.fouls||0)-(rv.fouls||0))<=3)pts+=PTS.fouls;
+  if(Math.abs((s.yellows||0)-(rv.yellows||0))<=1)pts+=PTS.yellows;
+  if((s.reds||0)===(rv.reds||0))pts+=PTS.reds;
+  if(!!s.penalties===!!rv.penalties)pts+=PTS.penalties;
+  if((pg1===rg1&&pg2===rg2)&&res(pg1,pg2)===res(rg1,rg2)&&(p.scorers||[]).some(function(sc){ return (r.scorers||[]).includes(sc); }))pts+=PTS.bonusCombo;
+  return pts;
+}
+
+async function recalcAll(){
+  if(!CL)return; toast('🔄 Recalcul en cours...');
+  var nPts={}; (CL.members||[]).forEach(function(uid){ nPts[uid]=0; });
+  try{
+    if(fbReady){
+      var snap=await db.collection('pronos').where('leagueId','==',CL.id).get();
+      var upd=[];
+      snap.forEach(function(doc){ var p=doc.data(),r=realResults[p.matchId]; if(!r)return; var pts=calcPts(p,r); if(pts!==null){ nPts[p.userId]=(nPts[p.userId]||0)+pts; upd.push(db.collection('pronos').doc(doc.id).update({points:pts})); } });
+      await Promise.all(upd);
+      var mpu={}; Object.entries(nPts).forEach(function([uid,pts]){ mpu['memberPoints.'+uid]=pts; });
+      await db.collection('leagues').doc(CL.id).update(mpu); CL.memberPoints=nPts;
+    }
+    toast('✅ Points recalculés !'); renderRanking(); renderMatches(); renderProfile();
+  }catch(e){ toast('❌ '+e.message); }
+}
+
+// ── ADMIN ────────────────────────────────────────────────────
+function renderAdmin(){
+  var c=document.getElementById('adminList'); if(!c)return; c.innerHTML='';
+  MATCHES.forEach(function(m){
+    var r=realResults[m.id];
+    var d=document.createElement('div'); d.className='admin-item';
+    var s1=r?r.score[0]:'', s2=r?r.score[1]:'';
+    var buts=r?(r.scorers||[]).join(', '):'', fs=r?r.firstScorer||'':'', motm=r?r.motm||'':'';
+    var co=r&&r.stats?r.stats.corners||0:'', fk=r&&r.stats?r.stats.freekicks||0:'';
+    var fo=r&&r.stats?r.stats.fouls||0:'', ye=r&&r.stats?r.stats.yellows||0:'';
+    var re2=r&&r.stats?r.stats.reds||0:'', pen=r&&r.stats?r.stats.penalties?1:0:'';
+    d.innerHTML='<div class="admin-teams"><div class="admin-team"><div class="af">'+m.team1.flag+'</div><div class="an">'+m.team1.name+'</div></div><div style="font-size:10px;color:var(--text2);text-align:center">'+m.group+'<br>'+m.date+'</div><div class="admin-team"><div class="af">'+m.team2.flag+'</div><div class="an">'+m.team2.name+'</div></div></div>'
+      +'<div class="admin-srow"><input class="admin-inp" type="number" min="0" max="20" placeholder="0" id="as1-'+m.id+'" value="'+s1+'"><div class="admin-sep">–</div><input class="admin-inp" type="number" min="0" max="20" placeholder="0" id="as2-'+m.id+'" value="'+s2+'"></div>'
+      +'<div class="fg"><label class="fl">Buteurs (virgule)</label><input class="admin-fi" placeholder="Ex: Pulisic, Mbappé" id="abut-'+m.id+'" value="'+buts+'"></div>'
+      +'<div class="fg"><label class="fl">1er buteur</label><input class="admin-fi" id="afs-'+m.id+'" value="'+fs+'"></div>'
+      +'<div class="fg"><label class="fl">Homme du match</label><input class="admin-fi" id="amotm-'+m.id+'" value="'+motm+'"></div>'
+      +'<div class="admin-sgrid"><div class="admin-sf"><div class="admin-sl">🚩 Corners</div><input class="admin-si" type="number" id="ac-'+m.id+'" value="'+co+'"></div><div class="admin-sf"><div class="admin-sl">🎯 Coups francs</div><input class="admin-si" type="number" id="afk-'+m.id+'" value="'+fk+'"></div><div class="admin-sf"><div class="admin-sl">⚠️ Fautes</div><input class="admin-si" type="number" id="afo-'+m.id+'" value="'+fo+'"></div><div class="admin-sf"><div class="admin-sl">🟨 Jaunes</div><input class="admin-si" type="number" id="ay-'+m.id+'" value="'+ye+'"></div><div class="admin-sf"><div class="admin-sl">🟥 Rouges</div><input class="admin-si" type="number" id="ar-'+m.id+'" value="'+re2+'"></div><div class="admin-sf"><div class="admin-sl">🥅 TAB (0/1)</div><input class="admin-si" type="number" min="0" max="1" id="ap-'+m.id+'" value="'+pen+'"></div></div>';
+    var btn=document.createElement('button'); btn.className='admin-sub'; btn.textContent='✅ Enregistrer résultat';
+    (function(mid){ btn.onclick=function(){ submitResult(mid); }; })(m.id);
+    d.appendChild(btn); c.appendChild(d);
+  });
+}
+
+async function submitResult(mid){
+  var g=function(id){ return parseInt(document.getElementById(id).value)||0; };
+  var sc=document.getElementById('abut-'+mid).value;
+  var res={matchId:mid,leagueId:CL.id,score:[g('as1-'+mid),g('as2-'+mid)],scorers:sc?sc.split(',').map(function(s){ return s.trim(); }).filter(Boolean):[],firstScorer:document.getElementById('afs-'+mid).value.trim()||null,motm:document.getElementById('amotm-'+mid).value.trim()||null,stats:{corners:g('ac-'+mid),freekicks:g('afk-'+mid),fouls:g('afo-'+mid),yellows:g('ay-'+mid),reds:g('ar-'+mid),penalties:g('ap-'+mid)===1},savedAt:fbReady?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString()};
+  try{ if(fbReady)await db.collection('results').doc(CL.id+'_'+mid).set(res,{merge:true}); realResults[mid]=res; toast('✅ Résultat enregistré !'); await recalcAll(); renderMatches(); }catch(e){ toast('❌ '+e.message); }
+}
+
+// ── COMPARE ──────────────────────────────────────────────────
+function renderCmpSel(){
+  var sel=document.getElementById('cmpSel'); sel.innerHTML=''; var any=false;
+  MATCHES.forEach(function(m){
+    if(new Date()<new Date(m.date+'T'+m.time)&&!realResults[m.id])return;
+    any=true;
+    var pill=document.createElement('div'); pill.className='cmp-pill';
+    pill.textContent=(m.team1.flag||'')+(m.team2.flag||'')+' '+(m.team1.name||'').substring(0,3).toUpperCase()+'vs'+(m.team2.name||'').substring(0,3).toUpperCase();
+    pill.onclick=function(){ document.querySelectorAll('.cmp-pill').forEach(function(p){ p.classList.remove('active'); }); pill.classList.add('active'); renderCmp(m); };
+    sel.appendChild(pill);
+  });
+  if(!any) sel.innerHTML='<div style="color:var(--text2);font-size:11px;padding:6px">Comparaisons disponibles après le coup d\'envoi.</div>';
+}
+
+async function renderCmp(m){
+  var c=document.getElementById('cmpContent'); c.innerHTML='<div class="empty"><div class="empty-ico">⏳</div><div class="empty-title">Chargement...</div></div>';
+  var pronos=leaguePronos[m.id]||[];
+  if(fbReady&&CL){ try{ var s=await db.collection('pronos').where('leagueId','==',CL.id).where('matchId','==',m.id).get(); pronos=s.docs.map(function(d){ return d.data(); }); leaguePronos[m.id]=pronos; }catch(e){} }
+  var r=realResults[m.id]; var h='';
+  if(r){ h+='<div class="cmp-banner"><div class="cmp-team"><div class="cf">'+m.team1.flag+'</div><div class="cn">'+m.team1.name+'</div></div><div><div class="cmp-score-big">'+r.score[0]+' – '+r.score[1]+'</div><div class="cmp-score-lbl">Résultat final</div></div><div class="cmp-team"><div class="cf">'+m.team2.flag+'</div><div class="cn">'+m.team2.name+'</div></div></div>'; if(r.scorers&&r.scorers.length)h+='<div style="font-size:11px;color:var(--text2);margin-bottom:3px">⚽ Buteurs : <strong style="color:var(--text)">'+r.scorers.join(', ')+'</strong></div>'; if(r.firstScorer)h+='<div style="font-size:11px;color:var(--text2);margin-bottom:3px">🥇 1er : <strong style="color:var(--text)">'+r.firstScorer+'</strong></div>'; if(r.motm)h+='<div style="font-size:11px;color:var(--text2);margin-bottom:8px">🌟 MOTM : <strong style="color:var(--text)">'+r.motm+'</strong></div>'; }
+  else{ h+='<div class="cmp-banner"><div class="cmp-team"><div class="cf">'+m.team1.flag+'</div><div class="cn">'+m.team1.name+'</div></div><div><div class="cmp-score-big" style="color:var(--text2)">? – ?</div><div class="cmp-score-lbl">Résultat à venir</div></div><div class="cmp-team"><div class="cf">'+m.team2.flag+'</div><div class="cn">'+m.team2.name+'</div></div></div>'; }
+  if(!pronos.length){ h+='<div style="text-align:center;padding:28px;color:var(--text2)">Aucun prono pour ce match.</div>'; c.innerHTML=h; return; }
+  h+='<div class="stitle">Pronos des membres</div><div class="card"><table class="cmp-table"><thead><tr><th>Membre</th><th>Score</th><th>Buteurs</th><th>1er</th>'+(r?'<th>Pts</th>':'')+'</tr></thead><tbody>';
+  pronos.forEach(function(p){
+    var isMe=p.userId===CU?.uid; var pts=r?calcPts(p,r):null; var pc=pts==null?'':pts>=20?'hi':pts>=8?'md':pts>0?'lo':'ze';
+    var sc=''; if(r){ if(p.score[0]===r.score[0]&&p.score[1]===r.score[1])sc='c'; else{ var res2=function(a,b){ return a>b?'W':a<b?'L':'D'; }; sc=res2(p.score[0],p.score[1])===res2(r.score[0],r.score[1])?'cl':'w'; } }
+    var bText=(p.scorers||[]).join(', ')||'—';
+    var tdPts=r?'<td><span class="ptschip '+pc+'">'+(pts!=null?'+'+pts:'—')+'</span></td>':'';
+    var tdName=isMe?('<strong>'+p.userName+'</strong>'):p.userName;
+    h+='<tr'+(isMe?' style="background:var(--gold3)"':'')+'><td>'+tdName+'</td><td><span class="cmp-uval '+(r?sc:'')+'">'+p.score[0]+'–'+p.score[1]+'</span></td><td style="font-size:10px">'+(bText.length>18?bText.substring(0,16)+'…':bText)+'</td><td style="font-size:10px">'+(p.firstScorer||'—')+'</td>'+tdPts+'</tr>';
+  });
+  h+='</tbody></table></div>';
+  c.innerHTML=h;
+}
+
+// ── RANKING ──────────────────────────────────────────────────
+function renderRanking(){
+  var c=document.getElementById('rankingList'); c.innerHTML='';
+  if(!CL){ c.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><div class="empty-title">Pas de ligue</div></div>'; return; }
+  var sorted=(CL.members||[]).map(function(uid){ return {uid,name:(CL.memberNames||{})[uid]||'Joueur',photo:(CL.memberPhotos||{})[uid]||'',pts:(CL.memberPoints||{})[uid]||0}; }).sort(function(a,b){ return b.pts-a.pts; });
+  sorted.forEach(function(m,i){
+    var isMe=m.uid===CU?.uid, pc=i===0?'rp1':i===1?'rp2':i===2?'rp3':'rpN', av=m.photo||avUrl(m.name);
+    var d=document.createElement('div'); d.className='rank-item'+(isMe?' me':'');
+    d.innerHTML='<div class="rpos '+pc+'">'+(i+1)+'</div><div class="rinfo"><div class="rname">'+m.name+(isMe?' <span style="color:var(--gold);font-size:9px">(moi)</span>':'')+'</div><div class="rsub">Rang #'+(i+1)+'</div></div><div class="rpts"><div class="rpv">'+m.pts+'</div><div class="rpl">points</div></div>';
+    var img2=document.createElement('img');img2.className='rav';img2.src=av;(function(u){img2.onerror=function(){this.src=u;};})(av);d.insertBefore(img2,d.children[1]);
+    c.appendChild(d);
+  });
+}
+
+// ── LIGUE INFO ────────────────────────────────────────────────
+function renderLeagueInfo(){
+  var c=document.getElementById('leagueInfo');
+  if(!CL){ c.innerHTML='<div class="empty"><div class="empty-ico">🔗</div></div>'; return; }
+  window._lgCode=CL.code; window._lgUrl=window.location.href.split('?')[0]+'?join='+CL.code;
+  var mh=''; (CL.members||[]).forEach(function(uid,i){ var n=(CL.memberNames||{})[uid]||'Joueur',pts=(CL.memberPoints||{})[uid]||0,isMe=uid===CU.uid,pc=i===0?'rp1':i===1?'rp2':i===2?'rp3':'rpN',role=uid===CL.createdBy?'👑 Admin':'⚽ Membre'; mh+='<div class="rank-item'+(isMe?' me':'')+'"><div class="rpos '+pc+'">'+(i+1)+'</div><div class="rinfo"><div class="rname">'+n+(isMe?' <span style="color:var(--gold)">(moi)</span>':'')+'</div><div class="rsub">'+role+'</div></div><div class="rpts"><div class="rpv">'+pts+'</div><div class="rpl">pts</div></div></div>'; });
+  c.innerHTML='<div class="lg-hero"><div class="lg-code-lbl">Nom</div><div class="lg-name">'+CL.name+'</div><div class="lg-code-lbl" style="margin-top:9px">Code</div><div class="lg-code">'+CL.code+'</div><div class="share-row"><div class="share-txt">📋 '+CL.code+'</div><button class="copy-btn" onclick="copyText(window._lgCode)">Copier</button></div><div class="share-row" style="margin-top:5px"><div class="share-txt">🔗 '+window._lgUrl+'</div><button class="copy-btn" onclick="copyText(window._lgUrl)">Copier</button></div></div><div class="stitle">Membres ('+((CL.members||[]).length)+')</div><div class="card">'+mh+'</div><div style="margin-top:11px"><button class="btn btn-danger" onclick="leaveLeague()">Quitter la ligue</button></div>';
+}
+
+// ── PROFIL ────────────────────────────────────────────────────
+function renderProfile(){
+  var myPts=(CL?.memberPoints||{})[CU?.uid]||0;
+  var sorted=(CL?.members||[]).map(function(uid){ return {uid,pts:(CL?.memberPoints||{})[uid]||0}; }).sort(function(a,b){ return b.pts-a.pts; });
+  var myRank=sorted.findIndex(function(m){ return m.uid===CU?.uid; })+1;
+  document.getElementById('statPts').textContent=myPts;
+  document.getElementById('statRank').textContent=myRank>0?'#'+myRank:'—';
+  document.getElementById('statPronos').textContent=MATCHES.length;
+  var BDGS=[{ico:'⚡',nm:'Flash',earned:true},{ico:'🔮',nm:'Oracle',earned:myPts>=30},{ico:'🎯',nm:'Sniper',earned:myPts>=50},{ico:'🔥',nm:'En feu',earned:myPts>=80},{ico:'🏆',nm:'Champion',earned:myRank===1},{ico:'💎',nm:'Diamant',earned:false}];
+  document.getElementById('userBadges').innerHTML=BDGS.map(function(b){ return '<div class="bdg'+(b.earned?' earned':' locked')+'"><div class="bdg-ico">'+b.ico+'</div><div class="bdg-nm">'+b.nm+'</div></div>'; }).join('');
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+function checkNotif(){
+  if(!('Notification' in window))return;
+  var banner=document.getElementById('notifBanner'),btn=document.getElementById('notifBtn');
+  if(Notification.permission==='granted'){ banner.classList.add('hidden'); if(btn)btn.textContent='🔔 Notifications activées ✅'; scheduleNotifs(); }
+  else if(Notification.permission!=='denied') banner.classList.remove('hidden');
+}
+async function requestNotif(){
+  if(!('Notification' in window)){ toast('❌ Non supporté'); return; }
+  var p=await Notification.requestPermission();
+  if(p==='granted'){ toast('🔔 Notifications activées !'); document.getElementById('notifBanner').classList.add('hidden'); document.getElementById('notifBtn').textContent='🔔 Notifications activées ✅'; scheduleNotifs(); }
+  else toast('⚠️ Notifications refusées');
+}
+function scheduleNotifs(){
+  var now=new Date();
+  MATCHES.forEach(function(m){
+    var mdt=new Date(m.date+'T'+m.time); if(mdt<=now)return;
+    [{d:2*3600000,msg:'⏰ '+m.team1.name+' vs '+m.team2.name+' — Pronos ferment dans 2h !'},{d:15*60000,msg:'🚨 URGENT ! '+m.team1.name+' vs '+m.team2.name+' — Plus que 15min !'}].forEach(function(r){
+      var delay=mdt-r.d-now;
+      if(delay>0&&delay<7*24*3600000)setTimeout(function(){ if(Notification.permission==='granted')new Notification('MyFloppyMatch 🏆',{body:r.msg}); },delay);
+    });
+  });
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function showTab(n){
+  document.querySelectorAll('[id^="tab-"]').forEach(function(el){ el.classList.add('hidden'); });
+  document.querySelectorAll('.tab,.nav-item').forEach(function(el){ el.classList.remove('active'); });
+  var el=document.getElementById('tab-'+n); if(el)el.classList.remove('hidden');
+  document.querySelector('.tab[data-tab="'+n+'"]')?.classList.add('active');
+  document.querySelector('.nav-item[data-nav="'+n+'"]')?.classList.add('active');
+  if(n==='compare')renderCmpSel(); if(n==='classement')renderRanking(); if(n==='profil')renderProfile();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function toast(msg,d){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); },d||2700); }
+function copyText(text){ if(navigator.clipboard)navigator.clipboard.writeText(text).then(function(){ toast('✅ Copié !'); }); else{ var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('✅ Copié !'); } }
+
+// URL join param
+var jp=new URLSearchParams(window.location.search).get('join');
+if(jp)window.addEventListener('load',function(){ var i=document.getElementById('joinCode'); if(i)i.value=jp; });
 function initFB(){
   var fbScripts=[
     'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
@@ -1924,3 +2346,7 @@ function setQuestionAnswer(docId, q){
 }
 
 
+
+</script>
+</body>
+</html>
