@@ -675,6 +675,7 @@ var db, auth, fbReady = false;
 var CU = null, CL = null, CM = null, CP = {};
 var realResults = {};
 var leaguePronos = {};
+var _preloadedScores = null;
 
 // ── BARÈME DES POINTS ────────────────────────────────────────
 var PTS = {
@@ -1567,8 +1568,7 @@ function renderLeagueInfo(){
 
 // ── PROFIL ────────────────────────────────────────────────────
 function renderProfile(){
-  dbg('renderProfile CU='+JSON.stringify(CU&&CU.uid)+' CL='+JSON.stringify(CL&&CL.name));
-  if(!CU){ dbg('CU null - abort'); return; }
+  if(!CU) return;
   // Avatar
   var av = (CU&&CU.photoURL) || avUrl((CU&&CU.displayName)||'?');
   var avEl = document.getElementById('profileAv');
@@ -1823,7 +1823,6 @@ function toggleEmailMode(){
   document.getElementById('emailSwitchBtn').textContent = isSignup ? 'Se connecter' : 'Créer un compte';
 }
 function submitEmailAuth(){
-  dbg('submitEmail fbReady='+fbReady+' auth='+(typeof auth));
   if(!fbReady){
     // Attendre Firebase (max 8s, toutes les 500ms)
     var attempts = 0;
