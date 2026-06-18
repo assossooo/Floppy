@@ -833,7 +833,7 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
             <button class="qpts-btn" data-pts="7" onclick="selectQPts(this)">7 pts</button>
           </div>
 
-          <button onclick="addAdminQuestion()" class="admin-sub" style="margin-top:12px">➕ Ajouter la question</button>
+          <button id="addQBtn" onclick="addAdminQuestion()" class="admin-sub" style="margin-top:12px">➕ Ajouter la question</button>
         </div>
       </div>
     </div>
@@ -910,7 +910,7 @@ const NAME_FR = {
   'Cape Verde':'Cap-Vert','Saudi Arabia':'Arabie Saoudite','Uruguay':'Uruguay',
   'France':'France','Senegal':'Sénégal','Iraq':'Irak','Norway':'Norvège',
   'Argentina':'Argentine','Algeria':'Algérie','Austria':'Autriche','Jordan':'Jordanie',
-  'Portugal':'Portugal','DR Congo':'RD Congo','Uzbekistan':'Ouzbékistan',
+  'Portugal':'Portugal','DR Congo':'RD Congo','Congo DR':'RD Congo','Democratic Republic of Congo':'RD Congo','Uzbekistan':'Ouzbékistan',
   'Colombia':'Colombie','England':'Angleterre','Croatia':'Croatie','Ghana':'Ghana',
   'Panama':'Panama','Nigeria':'Nigéria','Cameroon':'Cameroun','Mali':'Mali',
   'Venezuela':'Venezuela','Serbia':'Serbie',
@@ -1053,25 +1053,25 @@ const CDM2026 = [
   {g:"Groupe H",d:"2026-06-21",t:"19:00",t1:"Uruguay",t2:"Cape Verde",v:"Hard Rock Stadium"},
   {g:"Groupe H",d:"2026-06-25",t:"22:00",t1:"Uruguay",t2:"Spain",v:"MetLife Stadium"},
   {g:"Groupe H",d:"2026-06-25",t:"22:00",t1:"Cape Verde",t2:"Saudi Arabia",v:"Mercedes-Benz Stadium"},
-  {g:"Groupe I",d:"2026-06-16",t:"19:00",t1:"France",t2:"Senegal",v:"MetLife Stadium"},
-  {g:"Groupe I",d:"2026-06-16",t:"22:00",t1:"Iraq",t2:"Norway",v:"Gillette Stadium"},
+  {g:"Groupe I",d:"2026-06-16",t:"01:00",t1:"France",t2:"Senegal",v:"MetLife Stadium",done:true},
+  {g:"Groupe I",d:"2026-06-17",t:"01:00",t1:"Iraq",t2:"Norway",v:"Gillette Stadium",done:true},
   {g:"Groupe I",d:"2026-06-22",t:"21:00",t1:"France",t2:"Iraq",v:"Lincoln Financial Field"},
   {g:"Groupe I",d:"2026-06-23",t:"00:00",t1:"Norway",t2:"Senegal",v:"MetLife Stadium"},
   {g:"Groupe I",d:"2026-06-26",t:"19:00",t1:"Senegal",t2:"Iraq",v:"Gillette Stadium"},
   {g:"Groupe I",d:"2026-06-26",t:"19:00",t1:"Norway",t2:"France",v:"MetLife Stadium"},
-  {g:"Groupe J",d:"2026-06-17",t:"01:00",t1:"Argentina",t2:"Algeria",v:"Arrowhead Stadium"},
-  {g:"Groupe J",d:"2026-06-17",t:"04:00",t1:"Austria",t2:"Jordan",v:"Levi's Stadium"},
+  {g:"Groupe J",d:"2026-06-17",t:"01:00",t1:"Argentina",t2:"Algeria",v:"Arrowhead Stadium",done:true},
+  {g:"Groupe J",d:"2026-06-17",t:"04:00",t1:"Austria",t2:"Jordan",v:"Levi's Stadium",done:true},
   {g:"Groupe J",d:"2026-06-22",t:"17:00",t1:"Argentina",t2:"Austria",v:"AT&T Stadium"},
   {g:"Groupe J",d:"2026-06-23",t:"03:00",t1:"Jordan",t2:"Algeria",v:"Levi's Stadium"},
   {g:"Groupe J",d:"2026-06-27",t:"19:00",t1:"Algeria",t2:"Austria",v:"Arrowhead Stadium"},
   {g:"Groupe J",d:"2026-06-27",t:"19:00",t1:"Argentina",t2:"Jordan",v:"AT&T Stadium"},
-  {g:"Groupe K",d:"2026-06-17",t:"17:00",t1:"Portugal",t2:"DR Congo",v:"NRG Stadium"},
-  {g:"Groupe K",d:"2026-06-18",t:"02:00",t1:"Uzbekistan",t2:"Colombia",v:"Estadio Azteca"},
+  {g:"Groupe K",d:"2026-06-17",t:"17:00",t1:"Portugal",t2:"DR Congo",v:"NRG Stadium",done:true},
+  {g:"Groupe K",d:"2026-06-17",t:"20:00",t1:"Uzbekistan",t2:"Colombia",v:"Estadio Azteca",done:true},
   {g:"Groupe K",d:"2026-06-23",t:"17:00",t1:"Portugal",t2:"Uzbekistan",v:"NRG Stadium"},
   {g:"Groupe K",d:"2026-06-24",t:"02:00",t1:"Colombia",t2:"DR Congo",v:"Estadio Akron"},
   {g:"Groupe K",d:"2026-06-27",t:"22:00",t1:"DR Congo",t2:"Uzbekistan",v:"Estadio Azteca"},
   {g:"Groupe K",d:"2026-06-27",t:"22:00",t1:"Colombia",t2:"Portugal",v:"Arrowhead Stadium"},
-  {g:"Groupe L",d:"2026-06-17",t:"20:00",t1:"England",t2:"Croatia",v:"AT&T Stadium"},
+  {g:"Groupe L",d:"2026-06-17",t:"22:00",t1:"England",t2:"Croatia",v:"AT&T Stadium",done:true},
   {g:"Groupe L",d:"2026-06-17",t:"23:00",t1:"Ghana",t2:"Panama",v:"BMO Field"},
   {g:"Groupe L",d:"2026-06-22",t:"20:00",t1:"England",t2:"Ghana",v:"Gillette Stadium"},
   {g:"Groupe L",d:"2026-06-23",t:"23:00",t1:"Panama",t2:"Croatia",v:"BMO Field"},
@@ -1192,7 +1192,14 @@ function processLiveScores(data) {
       // Filtrer uniquement les matchs de la CDM 2026 (type group ou knockout)
       games = games.filter(function(g){ return g.type === 'group' || g.type === 'knockout' || g.type === 'final'; });
       // Normaliser pour comparaison (enlever accents, minuscules)
-      function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,''); }
+      function norm(s){ 
+        // Normaliser + gérer les alias API
+        var aliases = {'congo dr':'dr congo','democratic republic of congo':'dr congo',
+          'czechia':'czech republic','ir iran':'iran','turkiye':'turkey',
+          'cabo verde':'cape verde','ivory coast':'ivory coast'};
+        var n = (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z ]/g,'').trim();
+        return aliases[n] || n.replace(/[^a-z]/g,'');
+      }
       games.forEach(function(game) {
         var t1en = game.home_team_name_en || '';
         var t2en = game.away_team_name_en || '';
@@ -2724,31 +2731,46 @@ function loadAdminQuestionsForMatch(mid){
 function addAdminQuestion(){
   var mid = document.getElementById('adminMatchSelect').value;
   var text = document.getElementById('adminQText').value.trim();
-  var type = document.querySelector('.qtype-btn.active') ? document.querySelector('.qtype-btn.active').dataset.type : 'ouinon';
-  var pts = document.querySelector('.qpts-btn.active') ? parseInt(document.querySelector('.qpts-btn.active').dataset.pts) : 3;
-  var opts = document.getElementById('adminQOptions').value.trim();
-  
+  var typeBtn = document.querySelector('.qtype-btn.active');
+  var ptsBtn = document.querySelector('.qpts-btn.active');
+  var type = typeBtn ? typeBtn.dataset.type : 'ouinon';
+  var pts = ptsBtn ? parseInt(ptsBtn.dataset.pts) : 3;
+  var opts = (document.getElementById('adminQOptions')||{}).value||'';
+
   if(!mid){ toast('⚠️ Choisis un match'); return; }
   if(!text){ toast('⚠️ Écris la question'); return; }
-  if(!fbReady || !db){ toast('❌ Firebase non disponible'); return; }
-  
-  var options = type === 'ouinon' ? ['Oui','Non'] : 
-                type === 'equipe' ? [MATCHES.find(function(m){return m.id===mid;}).team1.name, MATCHES.find(function(m){return m.id===mid;}).team2.name] :
-                opts.split(',').map(function(o){return o.trim();}).filter(Boolean);
-  
-  var newQ = { text: text, type: type, pts: pts, options: options, correctAnswer: null };
-  
+  if(!fbReady || !db){ toast('❌ Firebase non prêt'); return; }
+
+  var options;
+  if(type==='ouinon'){
+    options=['Oui','Non'];
+  } else if(type==='equipe'){
+    var match=null;
+    for(var i=0;i<MATCHES.length;i++){ if(MATCHES[i].id===mid){match=MATCHES[i];break;} }
+    options = match ? [match.team1.name,match.team2.name] : ['Équipe A','Équipe B'];
+  } else {
+    options = opts ? opts.split(',').map(function(o){return o.trim();}).filter(Boolean) : [];
+  }
+
+  var newQ = {text:text,type:type,pts:pts,options:options,correctAnswer:null};
+  var btn = document.getElementById('addQBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳...';}
+
   db.collection('matchQuestions').doc(mid).get().then(function(doc){
-    var qs = doc.exists ? (doc.data().questions || []) : [];
+    var qs = doc.exists ? (doc.data().questions||[]) : [];
     qs.push(newQ);
-    return db.collection('matchQuestions').doc(mid).set({ questions: qs });
+    return db.collection('matchQuestions').doc(mid).set({questions:qs});
   }).then(function(){
     toast('✅ Question ajoutée !');
-    document.getElementById('adminQText').value = '';
-    document.getElementById('adminQOptions').value = '';
+    document.getElementById('adminQText').value='';
+    if(btn){btn.disabled=false;btn.textContent='➕ Ajouter la question';}
     loadAdminQuestionsForMatch(mid);
-  }).catch(function(e){ toast('❌ '+e.message); });
+  }).catch(function(e){
+    toast('❌ '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='➕ Ajouter la question';}
+  });
 }
+
 
 function setCorrectAnswer(mid, idx, answer){
   if(!fbReady||!db){toast('❌ Firebase non disponible');return;}
@@ -2974,16 +2996,50 @@ function renderMesPronos(){
   if(!container) return;
   container.innerHTML = '';
   var hasPrno = false;
+
+  // DEBUG : afficher toutes les clés localStorage
+  var allKeys = [];
+  try{
+    for(var i=0; i<localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(k) allKeys.push(k);
+    }
+  }catch(e){}
+  
+  // Afficher debug temporaire
+  var dbgDiv = document.createElement('div');
+  dbgDiv.style.cssText = 'background:#f0f;color:#000;font-size:10px;padding:8px;border-radius:8px;margin-bottom:12px;word-break:break-all';
+  dbgDiv.innerHTML = '<b>DEBUG localStorage ('+allKeys.length+' clés) :</b><br>'
+    + allKeys.map(function(k){ return '• '+k; }).join('<br>')
+    + '<br><b>CL.id=</b>'+(CL?CL.id:'null')
+    + ' <b>CU.uid=</b>'+(CU?CU.uid:'null')
+    + ' <b>MATCHES=</b>'+(MATCHES?MATCHES.length:'null');
+  container.appendChild(dbgDiv);
+  
   MATCHES.forEach(function(m){
-    var key = 'mfm_'+(CL?CL.id:'')+'_'+(CU?CU.uid:'')+'_'+m.id;
+    // Essayer plusieurs formats de clé
+    var keysToTry = [
+      'mfm_'+(CL?CL.id:'')+'_'+(CU?CU.uid:'')+'_'+m.id,
+      'mfm_'+(CL?CL.id:'')+'-'+(CU?CU.uid:'')+'-'+m.id,
+    ];
     var p = null;
-    try{ var v=localStorage.getItem(key); if(v) p=JSON.parse(v); }catch(e){}
+    for(var ki=0; ki<keysToTry.length; ki++){
+      try{ 
+        var v=localStorage.getItem(keysToTry[ki]); 
+        if(v){ p=JSON.parse(v); break; }
+      }catch(e){}
+    }
     if(!p) return;
     hasPrno = true;
     var res = realResults[m.id];
-    var scoreStr = p.scoreMode==='ecart' 
-      ? 'Écart: '+(p.ecart>0?'+':'')+p.ecart
-      : (p.score[0]+' – '+p.score[1]);
+    var scoreStr = '';
+    if(p.scoreMode==='ecart'){
+      scoreStr = 'Écart: '+(p.ecart>0?'+':'')+p.ecart;
+    } else if(p.score && p.score.length>=2){
+      scoreStr = p.score[0]+' – '+p.score[1];
+    } else {
+      scoreStr = 'Prono enregistré';
+    }
     var pts = p.points != null ? '+'+p.points+' pts' : '—';
     var ptsColor = p.points>0 ? 'var(--green)' : p.points===0 ? 'var(--red)' : 'var(--text2)';
     var d = document.createElement('div');
