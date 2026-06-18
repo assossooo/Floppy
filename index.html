@@ -52,7 +52,7 @@ body{font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;ba
 .setup-or{color:var(--text2);font-size:12px;display:flex;align-items:center;gap:10px;width:100%;max-width:360px}.setup-or::before,.setup-or::after{content:'';flex:1;height:1px;background:var(--border)}
 /* APP */
 #app{display:none;flex-direction:column;min-height:100vh;color:#1a1a1a;background:#fafaf7}
-.topbar{position:sticky;top:0;z-index:100;background:rgba(7,9,15,.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.topbar{position:relative;z-index:100;background:rgba(7,9,15,.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
 .topbar-logo{font-size:16px;font-weight:900;letter-spacing:-.5px}.topbar-logo span{color:var(--gold)}
 .topbar-r{display:flex;align-items:center;gap:7px}
 .league-pill{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--gold);font-weight:700;cursor:pointer;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1563,8 +1563,13 @@ function openModal(m,existing){
   var now=new Date();
   if(now>=new Date(m.date+'T'+m.time)){ toast('🔒 Pronos fermés'); return; }
   CM=m;
-  CP=existing?JSON.parse(JSON.stringify(existing)):{matchId:m.id,score:[0,0],scorers:[],firstScorer:null,motm:null,stats:{corners:8,freekicks:12,fouls:22,yellows:3,reds:0,penalties:false}};
-  if(!CP.stats) CP.stats={corners:8,freekicks:12,fouls:22,yellows:3,reds:0,penalties:false};
+  CP=existing?JSON.parse(JSON.stringify(existing)):{
+    matchId:m.id, score:[0,0], scoreMode:'exact', ecart:0, ecartTeam:'',
+    bonusAnswers:{}, scorers:[], firstScorer:null, motm:null
+  };
+  if(!CP.scoreMode) CP.scoreMode='exact';
+  if(!CP.bonusAnswers) CP.bonusAnswers={};
+  if(CP.ecart===undefined) CP.ecart=0;
   document.getElementById('modalTitle').textContent=m.team1.flag+' vs '+m.team2.flag;
   document.getElementById('mF1').textContent=m.team1.flag; document.getElementById('mN1').textContent=m.team1.name;
   document.getElementById('mF2').textContent=m.team2.flag; document.getElementById('mN2').textContent=m.team2.name;
@@ -1617,7 +1622,21 @@ function updPts(){
 async function saveProno(){
   if(!CM||!CU||!CL){ toast('⚠️ Problème'); return; }
   var btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='⏳...';
-  var d={...CP,userId:CU.uid,userName:CU.displayName,userPhoto:CU.photoURL||'',leagueId:CL.id,matchId:CM.id,savedAt:fbReady?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString(),points:null};
+  // Pas de spread operator (iOS Safari incompatible) - copier manuellement
+  var d={
+    matchId: CM.id,
+    leagueId: CL.id,
+    userId: CU.uid,
+    userName: CU.displayName || '',
+    userPhoto: (CU.photoURL || ''),
+    scoreMode: CP.scoreMode || 'exact',
+    score: CP.score || [0,0],
+    ecart: CP.ecart || 0,
+    ecartTeam: CP.ecartTeam || '',
+    bonusAnswers: CP.bonusAnswers || {},
+    savedAt: new Date().toISOString(),
+    points: null
+  };
   // Toujours sauvegarder en localStorage (accès rapide)
   var lsKey = 'mfm_'+CL.id+'_'+CU.uid+'_'+CM.id;
   try{ localStorage.setItem(lsKey, JSON.stringify(d)); }catch(e){}
@@ -2761,7 +2780,7 @@ function addAdminQuestion(){
     options = opts ? opts.split(',').map(function(o){return o.trim();}).filter(Boolean) : [];
   }
 
-  var newQ = {text:text,type:type,pts:pts,options:options,correctAnswer:null};
+  var newQ = {text:text,type:type,pts:pts,options:options,correctAnswer:''};
   var btn = document.getElementById('addQBtn');
   if(btn){btn.disabled=true;btn.textContent='⏳...';}
 
@@ -3015,28 +3034,17 @@ function renderMesPronos(){
     }
   }catch(e){}
   
-  // Afficher debug temporaire
-  var dbgDiv = document.createElement('div');
-  dbgDiv.style.cssText = 'background:#f0f;color:#000;font-size:10px;padding:8px;border-radius:8px;margin-bottom:12px;word-break:break-all';
-  dbgDiv.innerHTML = '<b>DEBUG localStorage ('+allKeys.length+' clés) :</b><br>'
-    + allKeys.map(function(k){ return '• '+k; }).join('<br>')
-    + '<br><b>CL.id=</b>'+(CL?CL.id:'null')
-    + ' <b>CU.uid=</b>'+(CU?CU.uid:'null')
-    + ' <b>MATCHES=</b>'+(MATCHES?MATCHES.length:'null');
-  container.appendChild(dbgDiv);
+
   
   MATCHES.forEach(function(m){
-    // Essayer plusieurs formats de clé
+    var p = null;
+    // Lire depuis localStorage
     var keysToTry = [
       'mfm_'+(CL?CL.id:'')+'_'+(CU?CU.uid:'')+'_'+m.id,
       'mfm_'+(CL?CL.id:'')+'-'+(CU?CU.uid:'')+'-'+m.id,
     ];
-    var p = null;
     for(var ki=0; ki<keysToTry.length; ki++){
-      try{ 
-        var v=localStorage.getItem(keysToTry[ki]); 
-        if(v){ p=JSON.parse(v); break; }
-      }catch(e){}
+      try{ var v=localStorage.getItem(keysToTry[ki]); if(v){ p=JSON.parse(v); break; } }catch(e){}
     }
     if(!p) return;
     hasPrno = true;
