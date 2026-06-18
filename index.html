@@ -427,6 +427,12 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
 
 .btn-guest{background:#f7f5f0;color:var(--ink);border:1.5px solid #e0d9c8!important}
 .btn-guest:active{background:#ede9e0}
+
+.qtype-row,.qpts-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;margin-bottom:4px}
+.qtype-btn{padding:8px 14px;border-radius:20px;border:1.5px solid #e0d9c8;background:#fff;font-size:13px;font-weight:600;color:#1a1a1a;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.qtype-btn.active{background:#1a1a1a;border-color:#1a1a1a;color:#fff}
+.qpts-btn{padding:7px 12px;border-radius:20px;border:1.5px solid #e0d9c8;background:#fff;font-size:12px;font-weight:700;color:#1a1a1a;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.qpts-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
 </style>
 </head>
 <body>
@@ -526,9 +532,7 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
       <div class="stitle" style="margin-bottom:12px">📋 Mes pronos confirmés</div>
       <div id="mesPronos"></div>
     </div>
-      <div class="cmp-sel" id="cmpSel"></div>
-      <div id="cmpContent"><div class="empty"><div class="empty-ico">👀</div><div class="empty-title">Sélectionne un match</div><div class="empty-desc">Les comparaisons sont disponibles après le coup d'envoi.</div></div></div>
-    </div>
+      
 
     <div id="tab-classement" class="hidden">
       <div class="stitle">Classement général</div>
@@ -1157,7 +1161,7 @@ function buildMatchesFromEmbedded() {
 function fetchMatches() {
   try {
     buildMatchesFromEmbedded();
-    renderMatches(); renderAdmin(); renderCmpSel();
+    renderMatches(); renderAdmin();
     // Charger scores live immédiatement
     fetchLiveScores();
   } catch(e) {
@@ -1250,7 +1254,6 @@ function processLiveScores(data) {
       });
       
       renderMatches();
-      renderCmpSel();
       console.log('✅ worldcup26.ir:', games.length, 'matchs chargés');
   })(data);
 }
@@ -1505,7 +1508,7 @@ function renderMatches(){
   if(!c)return;
   c.innerHTML='';
   var userPronos={};
-  try{ MATCHES.forEach(function(m){ var v=localStorage.getItem('mfm_'+(CL?CL.id:'')+'-'+(CU?CU.uid:'')+'-'+m.id); if(v)userPronos[m.id]=JSON.parse(v); }); }catch(e){}
+  try{ MATCHES.forEach(function(m){ var v=localStorage.getItem('mfm_'+(CL?CL.id:'')+'_'+(CU?CU.uid:'')+'_'+m.id); if(v)userPronos[m.id]=JSON.parse(v); }); }catch(e){}
   var sorted=MATCHES.slice().sort(function(a,b){ var da=a.date+'T'+a.time,db2=b.date+'T'+b.time; return da<db2?-1:da>db2?1:0; });
   var days={},dayOrder=[];
   sorted.forEach(function(m){ if(!days[m.date]){ days[m.date]=[]; dayOrder.push(m.date); } days[m.date].push(m); });
@@ -1611,7 +1614,7 @@ async function saveProno(){
   var d={...CP,userId:CU.uid,userName:CU.displayName,userPhoto:CU.photoURL||'',leagueId:CL.id,matchId:CM.id,savedAt:fbReady?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString(),points:null};
   try{
     if(fbReady) await db.collection('pronos').doc(CL.id+'_'+CU.uid+'_'+CM.id).set(d,{merge:true});
-    else localStorage.setItem('mfm_'+CL.id+'-'+CU.uid+'-'+CM.id,JSON.stringify(d));
+    else localStorage.setItem('mfm_'+CL.id+'_'+CU.uid+'_'+CM.id,JSON.stringify(d));
     toast('✅ Prono enregistré !'); closeModal(); renderMatches();
   }catch(e){ toast('❌ '+e.message); }
   finally{ btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; }
