@@ -432,6 +432,15 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
 .qtype-btn.active{background:#1a1a1a;border-color:#1a1a1a;color:#fff}
 .qpts-btn{padding:7px 12px;border-radius:20px;border:1.5px solid #e0d9c8;background:#fff;font-size:12px;font-weight:700;color:#1a1a1a;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .qpts-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+
+/* Contenu principal ne doit pas être caché sous la nav du bas */
+#app > div[id^="tab-"]{padding-bottom:80px}
+#tab-pronos{padding-bottom:80px}
+#tab-compare{padding-bottom:80px}
+#tab-classement{padding-bottom:80px}
+#tab-ligue{padding-bottom:80px}
+#tab-profil{padding-bottom:80px!important}
+.tab-content{padding-bottom:80px}
 </style>
 </head>
 <body>
@@ -1630,6 +1639,21 @@ function openModal(m,existing){
   // Masquer TAB pour phase de groupes
   document.getElementById('togPenRow').style.display=m.isKnockout?'flex':'none';
   renderChips(m); updPts();
+  // Charger questions bonus depuis Firestore
+  _bonusQuestions = [];
+  _bonusAnswers = {};
+  var bSection = document.getElementById('bonusSection');
+  var bContainer = document.getElementById('bonusQuestions');
+  if(bSection) bSection.style.display = 'none';
+  if(fbReady && db){
+    db.collection('matchQuestions').doc(m.id).get().then(function(doc){
+      if(doc.exists && doc.data().questions && doc.data().questions.length > 0){
+        _bonusQuestions = doc.data().questions;
+        if(bSection) bSection.style.display = 'block';
+        renderBonusQuestions();
+      }
+    }).catch(function(){});
+  }
   document.getElementById('pronoOverlay').classList.add('open');
 }
 function closeModal(){ document.getElementById('pronoOverlay').classList.remove('open'); }
@@ -1686,9 +1710,24 @@ async function saveProno(){
   
   if(fbReady){
     // Aussi dans Firebase pour partage ligue
-    db.collection('pronos').doc(CL.id+'_'+CU.uid+'_'+CM.id).set(d,{merge:true})
-      .then(function(){ toast('✅ Prono enregistré !'); closeModal(); renderMatches(); btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; })
-      .catch(function(e){ toast('❌ '+e.message); btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; });
+    // Nettoyer les undefined avant Firestore
+    var dClean = JSON.parse(JSON.stringify(d, function(k,v){ return v===undefined?null:v; }));
+    db.collection('pronos').doc(CL.id+'_'+CU.uid+'_'+CM.id).set(dClean,{merge:true})
+      .then(function(){ 
+        toast('✅ Prono enregistré !'); 
+        closeModal(); 
+        renderMatches();
+        renderMesPronos();
+        btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; 
+      })
+      .catch(function(e){ 
+        // Même si Firebase échoue, le localStorage est déjà sauvegardé
+        toast('✅ Prono enregistré localement !'); 
+        closeModal(); 
+        renderMatches();
+        renderMesPronos();
+        btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; 
+      });
   } else {
     toast('✅ Prono enregistré !');
     closeModal();
@@ -2905,7 +2944,7 @@ var _pillClicks = 0, _pillTimer = null;
 function leaguePillClick(){
   _pillClicks++;
   if(_pillTimer) clearTimeout(_pillTimer);
-  if(_pillClicks >= 5){
+  if(_pillClicks >= 3){
     _pillClicks = 0;
     // Vérifier si admin
     var uid = CU ? CU.uid : '';
@@ -3193,8 +3232,14 @@ function getFloppyReply(msg){
     return 'Le Brésil n\'a fait que 1-1 contre le Maroc... Un peu décevant pour les favoris. Vinicius doit hausser son niveau 🐉';
   } else if(m.includes('haaland') || m.includes('norvège')){
     return 'Haaland a claqué un doublé contre l\'Irak ! La Norvège surprend tout le monde 🇳🇴 À suivre de près !';
-  } else if(m.includes('pronostic') || m.includes('pari') || m.includes('score')){
-    return 'Pour faire un bon prono, regarde la forme récente, les confrontations directes, et fais confiance à ton instinct ! Moi je pense que... 🐉🔮 Allez y aller !';
+  } else if(m.includes('pronostic') || m.includes('pari') || m.includes('score') || m.includes('conseil')){
+    var conseils = [
+      'Pour ce soir, je vois l\'Argentine gagner 2-0. Messi en forme, défense solide. Score exact = 5 pts ! 🐉',
+      'France vs leur prochain adversaire ? Je dis 2-1 pour les Bleus. Mbappé marque en 2ème mi-temps 🔮',
+      'Haaland contre une défense faible = but assuré ! Mise sur la Norvège +1 pour commencer prudemment 🐉',
+      'Mon conseil : joue l\'écart de buts (+1) sur les matchs serrés, le score exact sur les grands favoris !',
+    ];
+    return conseils[Math.floor(Math.random()*conseils.length)];
   } else if(m.includes('buteur') || m.includes('goal') || m.includes('marquer')){
     return 'Actuellement Messi mène avec 3 buts 🐐, suivi de Mbappé et Haaland avec 2 chacun. Qui sera le roi des buteurs ? 🐉';
   } else if(m.includes('final') || m.includes('champion') || m.includes('gagne')){
