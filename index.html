@@ -51,7 +51,7 @@ body{font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;ba
 .setup-box-title{font-size:12px;font-weight:700;margin-bottom:11px;color:var(--text2)}
 .setup-or{color:var(--text2);font-size:12px;display:flex;align-items:center;gap:10px;width:100%;max-width:360px}.setup-or::before,.setup-or::after{content:'';flex:1;height:1px;background:var(--border)}
 /* APP */
-#app{display:none;flex-direction:column;min-height:100vh;color:#1a1a1a;background:#fafaf7}
+#app{display:none;flex-direction:column;min-height:100vh;color:#1a1a1a;background:#fafaf7;padding-top:env(safe-area-inset-top,0px)}
 .topbar{position:relative;z-index:100;background:rgba(7,9,15,.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
 .topbar-logo{font-size:16px;font-weight:900;letter-spacing:-.5px}.topbar-logo span{color:var(--gold)}
 .topbar-r{display:flex;align-items:center;gap:7px}
@@ -2787,7 +2787,9 @@ function addAdminQuestion(){
   db.collection('matchQuestions').doc(mid).get().then(function(doc){
     var qs = doc.exists ? (doc.data().questions||[]) : [];
     qs.push(newQ);
-    return db.collection('matchQuestions').doc(mid).set({questions:qs});
+    // Nettoyer undefined → '' pour Firestore
+    var cleanQs = JSON.parse(JSON.stringify(qs, function(k,v){ return v===undefined?'':v; }));
+    return db.collection('matchQuestions').doc(mid).set({questions:cleanQs});
   }).then(function(){
     toast('✅ Question ajoutée !');
     document.getElementById('adminQText').value='';
