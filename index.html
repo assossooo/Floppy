@@ -530,6 +530,7 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
     <div id="tab-compare" class="hidden" style="padding:16px;background:#fafaf7;min-height:60vh">
       <div class="stitle" style="margin-bottom:12px">📋 Mes pronos confirmés</div>
       <div id="mesPronos"></div>
+    </div></div>
     </div>
       
 
@@ -539,6 +540,25 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
     </div>
 
     <div id="tab-ligue" class="hidden">
+    <!-- Chat de ligue -->
+    <div id="leagueChat" style="display:none;flex-direction:column;height:calc(100vh - 160px)">
+      <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0ede6">
+        <div style="font-size:15px;font-weight:800;color:#1a1a1a">💬 Chat de ligue</div>
+        <button onclick="showLeagueInfo()" style="background:none;border:none;color:#c9a227;font-size:13px;font-weight:600;cursor:pointer">Infos ligue ›</button>
+      </div>
+      <div id="chatMessages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
+      <div style="padding:10px;border-top:1px solid #f0ede6;display:flex;gap:8px">
+        <input id="chatInput" type="text" placeholder="Message..." style="flex:1;padding:9px 14px;border:1.5px solid #e0d9c8;border-radius:20px;font-size:14px;outline:none" onkeypress="if(event.key==='Enter')sendChat()">
+        <button onclick="sendChat()" style="width:38px;height:38px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;font-size:16px;color:#fff">➤</button>
+      </div>
+    </div>
+    <!-- Infos ligue -->
+    <div id="leagueInfoPanel">
+      <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0ede6">
+        <div style="font-size:15px;font-weight:800;color:#1a1a1a">🔗 Ma ligue</div>
+        <button onclick="showLeagueChat()" style="background:none;border:none;color:#c9a227;font-size:13px;font-weight:600;cursor:pointer">💬 Chat ›</button>
+      </div>
+
       <div id="leagueInfo"></div>
     </div>
 
@@ -761,6 +781,12 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
       <button class="side-nav-btn" onclick="sideNav('profil')">
         <span class="side-nav-ico">👤</span><span>Profil</span>
       </button>
+      <button class="side-nav-btn" onclick="closeSideDrawer();showPredictions()">
+        <span class="side-nav-ico">🏆</span><span>Prédictions</span>
+      </button>
+      <button class="side-nav-btn" onclick="closeSideDrawer();toggleFloppy()">
+        <span class="side-nav-ico">🐉</span><span>Floppy IA</span>
+      </button>
     </div>
     <div class="side-footer">
       <button class="side-opt-btn" onclick="toggleTheme();closeSideDrawer()">
@@ -772,6 +798,34 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
       <button class="side-opt-btn danger" onclick="doSignOut()">
         🚪 Se déconnecter
       </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- IA Floppy le Dragon -->
+<button id="floppyBtn" onclick="toggleFloppy()" style="position:fixed;bottom:90px;right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#c9a227,#e0b94a);border:none;box-shadow:0 4px 16px rgba(201,162,39,.4);cursor:pointer;z-index:500;font-size:26px;display:flex;align-items:center;justify-content:center">🐉</button>
+
+<div id="floppyOverlay" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);backdrop-filter:blur(6px)">
+  <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:24px 24px 0 0;max-height:75vh;display:flex;flex-direction:column">
+    <div style="padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0ede6">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:28px">🐉</span>
+        <div>
+          <div style="font-size:16px;font-weight:900;color:#1a1a1a">Floppy le Dragon</div>
+          <div style="font-size:11px;color:#c9a227;font-weight:600">Assistant IA • CDM 2026</div>
+        </div>
+      </div>
+      <button onclick="toggleFloppy()" style="background:rgba(0,0,0,.06);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div id="floppyMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:200px">
+      <div style="background:#fafaf7;border-radius:16px 16px 16px 4px;padding:12px 14px;max-width:85%">
+        <div style="font-size:13px;color:#1a1a1a">Salut ! Je suis Floppy 🐉 Ton assistant CDM 2026. Pose-moi tes questions sur les matchs, les équipes, les pronostics... Je suis là pour t'aider à gagner !</div>
+      </div>
+    </div>
+    <div style="padding:12px;border-top:1px solid #f0ede6;display:flex;gap:8px">
+      <input id="floppyInput" type="text" placeholder="Pose ta question à Floppy..." style="flex:1;padding:10px 14px;border:1.5px solid #e0d9c8;border-radius:20px;font-size:14px;outline:none">
+      <button onclick="sendToFloppy()" style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#c9a227,#e0b94a);border:none;cursor:pointer;font-size:18px;flex-shrink:0">➤</button>
     </div>
   </div>
 </div>
@@ -1647,9 +1701,14 @@ async function saveProno(){
       .then(function(){ toast('✅ Prono enregistré !'); closeModal(); renderMatches(); btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; })
       .catch(function(e){ toast('❌ '+e.message); btn.disabled=false; btn.textContent='💾 Enregistrer mon prono'; });
   } else {
-    toast('✅ Prono enregistré (local) !');
+    toast('✅ Prono enregistré !');
     closeModal();
     renderMatches();
+    // Mettre à jour Mes pronos si visible
+    var mp = document.getElementById('mesPronos');
+    if(mp && document.getElementById('tab-compare') && !document.getElementById('tab-compare').classList.contains('hidden')){
+      renderMesPronos();
+    }
     btn.disabled=false;
     btn.textContent='💾 Enregistrer mon prono';
   }
@@ -1855,7 +1914,8 @@ function showTab(n){
   var el=document.getElementById('tab-'+n); if(el)el.classList.remove('hidden');
   var ta=document.querySelector('.tab[data-tab="'+n+'"]'); if(ta)ta.classList.add('active');
   var na=document.querySelector('.nav-item[data-nav="'+n+'"]'); if(na)na.classList.add('active');
-  if(n==='compare')renderMesPronos(); 
+  if(n==='compare')renderMesPronos();
+  if(n==='ligue'){ showLeagueInfo(); } 
   if(n==='classement')renderRanking(); 
   if(n==='profil'){ 
     var pTab=document.getElementById('tab-profil');
@@ -2858,7 +2918,9 @@ function leaguePillClick(){
   if(_pillTimer) clearTimeout(_pillTimer);
   if(_pillClicks >= 5){
     _pillClicks = 0;
-    if(CU && CU.uid === '9Hth8YV9uzdNXeWhq1fi3StO7RZ2'){
+    // Vérifier si admin
+    var uid = CU ? CU.uid : '';
+    if(uid === '9Hth8YV9uzdNXeWhq1fi3StO7RZ2'){
       showAdminPanel();
     } else {
       showTab('ligue');
@@ -2867,7 +2929,7 @@ function leaguePillClick(){
     _pillTimer = setTimeout(function(){
       _pillClicks = 0;
       showTab('ligue');
-    }, 600);
+    }, 800);
   }
 }
 // ── NAVIGATION LATÉRALE ──────────────────────────────────────
@@ -3075,6 +3137,11 @@ function renderMesPronos(){
         +'<div style="font-size:13px;font-weight:700;color:#1a1a1a;flex:1;text-align:right">'+m.team2.name+' '+m.team2.flag+'</div>'
       +'</div>'
       +(res ? '<div style="font-size:11px;color:var(--text2);margin-top:6px;text-align:center">Résultat réel: '+res.score[0]+' – '+res.score[1]+'</div>' : '');
+    // Ajouter réactions
+    var reactDiv = document.createElement('div');
+    reactDiv.style.cssText = 'margin-top:8px;display:flex;flex-wrap:wrap;gap:4px';
+    renderReactions(m.id, reactDiv);
+    d.appendChild(reactDiv);
     container.appendChild(d);
   });
   if(!hasPrno){
@@ -3083,6 +3150,232 @@ function renderMesPronos(){
       +'<div style="font-size:15px;font-weight:700">Aucun prono encore</div>'
       +'<div style="font-size:13px;margin-top:4px">Clique sur un match pour pronostiquer</div>'
       +'</div>';
+  }
+}
+// ── IA FLOPPY LE DRAGON ──────────────────────────────────────
+var _floppyOpen = false;
+var _floppyHistory = [];
+
+function toggleFloppy(){
+  _floppyOpen = !_floppyOpen;
+  document.getElementById('floppyOverlay').style.display = _floppyOpen ? 'block' : 'none';
+  if(_floppyOpen){
+    var inp = document.getElementById('floppyInput');
+    if(inp) inp.focus();
+  }
+}
+
+function sendToFloppy(){
+  var inp = document.getElementById('floppyInput');
+  var msg = inp ? inp.value.trim() : '';
+  if(!msg) return;
+  inp.value = '';
+  
+  // Afficher le message utilisateur
+  addFloppyMsg(msg, true);
+  
+  // Préparer le contexte CDM
+  var ctx = 'Tu es Floppy le Dragon, assistant IA expert en football et en Coupe du Monde 2026. '
+    + 'La CDM 2026 se joue aux USA, Canada et Mexique. '
+    + 'Tu aides les joueurs à faire leurs pronostics avec humour et expertise. '
+    + 'Réponds en français, de façon concise et fun (max 3 phrases). '
+    + 'Résultats connus: France 3-1 Sénégal, Argentine 3-0 Algérie (hat-trick Messi!), '
+    + 'Portugal 1-1 Congo DR, Angleterre 4-2 Croatie, Allemagne 7-1 Curaçao, '
+    + 'USA 4-1 Paraguay, Espagne 5-0 Cap-Vert.';
+
+  _floppyHistory.push({role:'user', content: msg});
+  
+  // Appel API Claude
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 200,
+      system: ctx,
+      messages: _floppyHistory.slice(-6)
+    })
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    var reply = d.content && d.content[0] ? d.content[0].text : 'Je réfléchis... 🐉';
+    _floppyHistory.push({role:'assistant', content: reply});
+    addFloppyMsg(reply, false);
+  }).catch(function(){
+    addFloppyMsg('Oups! Ma connexion dragon est coupée 🐉🔥 Réessaie!', false);
+  });
+}
+
+function addFloppyMsg(text, isUser){
+  var container = document.getElementById('floppyMessages');
+  if(!container) return;
+  var div = document.createElement('div');
+  div.style.cssText = 'border-radius:' + (isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px')
+    + ';padding:10px 14px;max-width:85%;font-size:13px;line-height:1.4;'
+    + 'background:' + (isUser ? 'linear-gradient(135deg,#c9a227,#e0b94a)' : '#fafaf7') + ';'
+    + 'color:' + (isUser ? '#fff' : '#1a1a1a') + ';'
+    + (isUser ? 'align-self:flex-end;' : 'align-self:flex-start;');
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── CHAT PAR LIGUE ───────────────────────────────────────────
+var _chatListener = null;
+
+function showLeagueChat(){
+  document.getElementById('leagueChat').style.display = 'flex';
+  document.getElementById('leagueInfoPanel').style.display = 'none';
+  loadChatMessages();
+}
+function showLeagueInfo(){
+  document.getElementById('leagueChat').style.display = 'none';
+  document.getElementById('leagueInfoPanel').style.display = 'block';
+}
+
+function loadChatMessages(){
+  if(!fbReady || !db || !CL) return;
+  var container = document.getElementById('chatMessages');
+  if(_chatListener) _chatListener();
+  _chatListener = db.collection('leagueChats').doc(CL.id)
+    .collection('messages').orderBy('ts').limitToLast(50)
+    .onSnapshot(function(snap){
+      container.innerHTML = '';
+      snap.forEach(function(doc){
+        var m = doc.data();
+        var isMe = m.uid === (CU&&CU.uid);
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';gap:2px;margin-bottom:6px';
+        var name = document.createElement('div');
+        name.style.cssText = 'font-size:10px;color:#7a7468;margin:'+(isMe?'0 4px 0 0':'0 0 0 4px');
+        name.textContent = m.name || 'Joueur';
+        var bubble = document.createElement('div');
+        bubble.style.cssText = 'background:'+(isMe?'linear-gradient(135deg,#c9a227,#e0b94a)':'#f0ede6')
+          +';color:'+(isMe?'#fff':'#1a1a1a')
+          +';border-radius:'+(isMe?'16px 16px 4px 16px':'16px 16px 16px 4px')
+          +';padding:9px 13px;max-width:75%;font-size:14px;line-height:1.4';
+        bubble.textContent = m.text;
+        div.appendChild(name);
+        div.appendChild(bubble);
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+    });
+}
+
+function sendChat(){
+  var inp = document.getElementById('chatInput');
+  var text = inp ? inp.value.trim() : '';
+  if(!text || !fbReady || !db || !CL || !CU) return;
+  inp.value = '';
+  db.collection('leagueChats').doc(CL.id).collection('messages').add({
+    uid: CU.uid,
+    name: CU.displayName || 'Joueur',
+    text: text,
+    ts: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(function(e){ toast('❌ '+e.message); });
+}
+
+// ── RÉACTIONS AUX PRONOS ─────────────────────────────────────
+var REACTIONS = ['🔥','👏','😬','🤔','💪','😂'];
+
+function addReaction(matchId, emoji){
+  if(!fbReady || !db || !CU || !CL) return;
+  var ref = db.collection('reactions').doc(CL.id+'_'+matchId+'_'+CU.uid);
+  ref.set({ uid:CU.uid, matchId:matchId, emoji:emoji, name:CU.displayName||'?', ts:new Date().toISOString() })
+    .then(function(){ toast(emoji+' Réaction envoyée !'); })
+    .catch(function(e){ toast('❌ '+e.message); });
+}
+
+function renderReactions(matchId, container){
+  if(!fbReady || !db || !CL) return;
+  db.collection('reactions')
+    .where('matchId','==',matchId)
+    .get().then(function(snap){
+      var counts = {};
+      snap.forEach(function(doc){
+        var e = doc.data().emoji;
+        counts[e] = (counts[e]||0)+1;
+      });
+      container.innerHTML = '';
+      REACTIONS.forEach(function(emoji){
+        var btn = document.createElement('button');
+        btn.style.cssText = 'background:none;border:1px solid #e0d9c8;border-radius:16px;padding:4px 8px;cursor:pointer;font-size:13px;margin:2px';
+        btn.textContent = emoji + (counts[emoji]?' '+counts[emoji]:'');
+        (function(e){ btn.onclick=function(){ addReaction(matchId,e); }; })(emoji);
+        container.appendChild(btn);
+      });
+    }).catch(function(){});
+}
+
+// ── PRONOS LIVE (pendant le match) ───────────────────────────
+function showLiveProno(matchId){
+  // Questions live disponibles pendant le match
+  if(!fbReady||!db) return;
+  db.collection('matchQuestions').doc(matchId).get().then(function(doc){
+    if(!doc.exists) return toast('Pas de questions live pour ce match');
+    var qs = (doc.data().questions||[]).filter(function(q){ return q.live; });
+    if(!qs.length) return toast('Pas de questions live disponibles');
+    // Afficher une interface minimale pour répondre aux questions live
+    toast('🔴 '+qs.length+' question(s) live disponible(s) !');
+  }).catch(function(){});
+}
+
+// ── PRÉDICTIONS BUTEURS & CHAMPIONS ──────────────────────────
+var TOP_SCORERS = [
+  {name:'Lionel Messi',team:'🇦🇷 Argentine',goals:3,flag:'🇦🇷'},
+  {name:'Harry Kane',team:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre',goals:2,flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+  {name:'Vinicius Jr',team:'🇧🇷 Brésil',goals:1,flag:'🇧🇷'},
+  {name:'Kylian Mbappé',team:'🇫🇷 France',goals:2,flag:'🇫🇷'},
+  {name:'Erling Haaland',team:'🇳🇴 Norvège',goals:2,flag:'🇳🇴'},
+  {name:'Cristiano Ronaldo',team:'🇵🇹 Portugal',goals:1,flag:'🇵🇹'},
+];
+
+function closePredictions(){ var o=document.getElementById("predictionsOverlay"); if(o)o.remove(); }
+function showPredictions(){
+  var overlay = document.getElementById('predictionsOverlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'predictionsOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:flex-end';
+    var panel = document.createElement('div');
+    panel.style.cssText = 'background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:20px 16px 32px';
+    
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+      +'<div style="font-size:17px;font-weight:900;color:#1a1a1a">🏆 Prédictions CDM 2026</div>'
+      +'<button onclick="closePredictions()" style="background:rgba(0,0,0,.06);border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>'
+      +'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:#c9a227;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">⚽ Meilleurs buteurs</div>';
+    
+    TOP_SCORERS.forEach(function(p,i){
+      html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0ede6">'
+        +'<div style="font-size:20px;font-weight:900;color:#c9a227;width:24px">'+( i+1)+'</div>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#1a1a1a">'+p.name+'</div>'
+        +'<div style="font-size:11px;color:#7a7468">'+p.team+'</div></div>'
+        +'<div style="font-size:18px;font-weight:900;color:#1a1a1a">'+p.goals+' ⚽</div>'
+        +'</div>';
+    });
+    
+    html += '<div style="font-size:13px;font-weight:800;color:#c9a227;margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px">🏆 Favoris champion</div>';
+    var favorites = [
+      {team:'France',flag:'🇫🇷',odds:'22%'},
+      {team:'Argentine',flag:'🇦🇷',odds:'20%'},
+      {team:'Angleterre',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',odds:'15%'},
+      {team:'Brésil',flag:'🇧🇷',odds:'14%'},
+      {team:'Espagne',flag:'🇪🇸',odds:'12%'},
+    ];
+    favorites.forEach(function(f){
+      html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0ede6">'
+        +'<div style="font-size:24px">'+f.flag+'</div>'
+        +'<div style="flex:1;font-size:14px;font-weight:700;color:#1a1a1a">'+f.team+'</div>'
+        +'<div style="background:rgba(201,162,39,.15);color:#c9a227;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">'+f.odds+'</div>'
+        +'</div>';
+    });
+    
+    panel.innerHTML = html;
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  } else {
+    overlay.style.display = 'flex';
   }
 }
 </script>
