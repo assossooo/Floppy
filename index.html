@@ -65,18 +65,39 @@ body{font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;ba
 .stitle{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin:16px 0 8px}
 .card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}.card+.card{margin-top:8px}
 /* MATCH CARD */
-.mcard{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:9px;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .15s}.mcard:active{border-color:var(--gold);transform:scale(.99)}.mcard.locked{opacity:.72;cursor:default}
-.mcard-head{background:var(--bg3);padding:6px 12px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--text2);font-weight:600}.mcard-head .grp{color:var(--gold)}
-.mcard-body{padding:13px 12px;display:flex;align-items:center;justify-content:space-between;gap:7px}
-.mteam{flex:1;text-align:center}.mteam .fl{font-size:32px;display:block;margin-bottom:2px}.mteam .tn{font-size:11px;font-weight:700}
-.mvs{font-size:19px;font-weight:900;color:var(--text2);min-width:34px;text-align:center}
-.mlive-score{font-size:20px;font-weight:900;color:var(--gold);min-width:56px;text-align:center}
-.live-dot{width:6px;height:6px;background:var(--red);border-radius:50%;animation:blink 1s infinite;display:inline-block}.live-min{font-size:9px;color:var(--red);font-weight:700;display:flex;align-items:center;justify-content:center;gap:3px}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.mcard-foot{padding:6px 12px 8px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--text2);border-top:1px solid var(--border)}
-.prono-score{font-size:14px;font-weight:800;color:var(--gold)}
-.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:9px;font-size:9px;font-weight:700}
-.tag-open{background:rgba(45,198,83,.12);color:var(--green)}.tag-soon{background:rgba(249,115,22,.15);color:var(--orange)}.tag-locked{background:rgba(138,150,176,.1);color:var(--text2)}.tag-live{background:rgba(230,57,70,.15);color:var(--red)}.tag-done{background:rgba(74,144,217,.12);color:var(--blue)}
+/* ═══ CARTES MATCH - DESIGN PREMIUM ═══ */
+.mcard{background:#fff;border-radius:20px;border:1px solid #ece7db;margin-bottom:14px;overflow:hidden;cursor:pointer;transition:all .2s;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.mcard:active{transform:scale(.98);box-shadow:0 6px 20px rgba(201,162,39,.18)}
+.mcard:not(.locked):hover{border-color:var(--gold);box-shadow:0 6px 24px rgba(201,162,39,.15)}
+.mcard.locked{opacity:.85;cursor:default}
+.mcard-head{background:linear-gradient(135deg,#faf8f2,#f4f0e6);padding:9px 14px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#8a8266;font-weight:700}
+.mcard-head .grp{color:var(--gold2);font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+.mcard-body{padding:20px 14px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mteam{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.mteam .fl{font-size:56px;display:block;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.15))}
+.mteam .tn{font-size:14px;font-weight:800;color:#1a1a1a;line-height:1.1}
+.mvs{font-size:16px;font-weight:900;color:#c9a227;min-width:44px;text-align:center;background:rgba(201,162,39,.1);border-radius:12px;padding:8px 4px}
+.mlive-score{font-size:30px;font-weight:900;color:#1a1a1a;min-width:60px;text-align:center;background:linear-gradient(135deg,#c9a227,#e0b94a);color:#fff;border-radius:14px;padding:6px 10px;box-shadow:0 3px 10px rgba(201,162,39,.3)}
+.mcard-date{text-align:center;font-size:12px;color:#a89f88;font-weight:600;padding:0 14px 6px}
+.mcard-foot{padding:12px 14px;background:#faf8f2;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0ede4}
+.prono-score{font-size:15px;font-weight:900;color:var(--gold2);background:rgba(201,162,39,.12);padding:3px 10px;border-radius:10px}
+.ptschip{font-size:11px;font-weight:800;padding:3px 9px;border-radius:10px}
+.ptschip.hi{background:#d4edda;color:#155724}
+.ptschip.md{background:#fff3cd;color:#856404}
+.ptschip.lo{background:#e2e3e5;color:#383d41}
+.ptschip.ze{background:#f8d7da;color:#721c24}
+/* Tags */
+.tag{font-size:10px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.tag-done{background:#d4edda;color:#155724}
+.tag-live{background:#f8d7da;color:#721c24;display:inline-flex;align-items:center;gap:4px}
+.tag-locked{background:#e2e3e5;color:#6c757d}
+.tag-soon{background:#fff3cd;color:#856404}
+.tag-open{background:linear-gradient(135deg,#c9a227,#e0b94a);color:#fff}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#dc3545;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* Titre de jour */
+.stitle{font-size:15px;font-weight:900;color:#1a1a1a;margin:20px 4px 12px;display:flex;align-items:center;gap:8px}
+.stitle::before{content:'';width:4px;height:18px;background:linear-gradient(180deg,#c9a227,#e0b94a);border-radius:2px}
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);align-items:flex-end;justify-content:center}.overlay.open{display:flex}
 .modal{width:100%;max-width:600px;background:var(--bg2);border-radius:20px 20px 0 0;border-top:1px solid var(--border);max-height:94vh;overflow-y:auto;padding-bottom:32px;animation:su .27s ease}.modal::-webkit-scrollbar{display:none}
@@ -532,16 +553,17 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
         <div class="nb-txt">🔔 Active les notifications pour ne pas rater la fermeture des pronos !</div>
         <button class="nb-btn" onclick="requestNotif()">Activer</button>
       </div>
-      <div class="stitle">Matchs Coupe du Monde 2026</div>
+      <div style="text-align:center;padding:16px 0 8px">
+        <div style="font-size:22px;font-weight:900;color:#1a1a1a;letter-spacing:-.5px">⚽ Coupe du Monde 2026</div>
+        <div style="font-size:13px;color:#a89f88;font-weight:600;margin-top:2px">Fais tes pronos et grimpe au classement !</div>
+      </div>
       <div id="matchesList"></div>
     </div>
 
     <div id="tab-compare" class="hidden" style="padding:16px;background:#fafaf7;min-height:60vh">
       <div class="stitle" style="margin-bottom:12px">📋 Mes pronos confirmés</div>
       <div id="mesPronos"></div>
-    </div></div>
     </div>
-      
 
     <div id="tab-classement" class="hidden">
       <div class="stitle">Classement général</div>
@@ -1593,16 +1615,16 @@ function renderMatches(){
         else center='<div class="mvs">VS</div>';
         var ptsEarned='';
         if(res&&prono&&prono.points!=null){ var pc=prono.points>=20?'hi':prono.points>=8?'md':prono.points>0?'lo':'ze'; ptsEarned='<span class="ptschip '+pc+'">+'+prono.points+'pts</span>'; }
-        var foot=prono?'<div><span class="prono-score">'+prono.score[0]+'–'+prono.score[1]+'</span></div><div style="display:flex;align-items:center;gap:5px"><span style="color:var(--text2);font-size:10px">Prono ✅</span>'+ptsEarned+'</div>':'<div></div><div style="color:var(--text2);font-size:10px">'+(locked?'Aucun prono':'Appuie pour pronostiquer')+'</div>';
+        var foot=prono?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:#8a8266;font-weight:600">Ton prono:</span><span class="prono-score">'+(prono.scoreMode==='ecart'?('Écart '+(prono.ecart>0?'+':'')+prono.ecart):(prono.score[0]+'–'+prono.score[1]))+'</span></div><div style="display:flex;align-items:center;gap:5px">'+ptsEarned+'</div>':'<div style="display:flex;align-items:center;gap:6px;color:var(--gold2);font-size:13px;font-weight:700">'+(locked?'<span style="color:#a89f88">🔒 Pronos fermés</span>':'<span>✏️ Pronostiquer</span><span style="font-size:16px">→</span>')+'</div><div></div>';
         // Heure locale
         var timeLabel='';
         try{ var mlocal=new Date(m.date+'T'+m.time+':00Z'); var tz=Intl.DateTimeFormat().resolvedOptions().timeZone; timeLabel=mlocal.toLocaleTimeString('fr-FR',{timeZone:tz,hour:'2-digit',minute:'2-digit'}); }catch(e){ timeLabel=m.time; }
         var card=document.createElement('div');
         card.className='mcard'+(locked?' locked':'');
         if(!locked){ (function(match,p){ card.onclick=function(){ openModal(match,p); }; })(m,prono); }
-        card.innerHTML='<div class="mcard-head"><span class="grp">'+m.group+'</span><span>'+m.venue+'</span>'+tag+'</div>'
+        card.innerHTML='<div class="mcard-head"><span class="grp">'+m.group+'</span><span>📍 '+m.venue+'</span>'+tag+'</div>'
+          +'<div class="mcard-date">🕐 '+timeLabel+'</div>'
           +'<div class="mcard-body"><div class="mteam"><span class="fl">'+m.team1.flag+'</span><span class="tn">'+m.team1.name+'</span></div>'+center+'<div class="mteam"><span class="fl">'+m.team2.flag+'</span><span class="tn">'+m.team2.name+'</span></div></div>'
-          +'<div class="mcard-date">📅 '+label+' · '+timeLabel+'</div>'
           +'<div class="mcard-foot">'+foot+'</div>';
         c.appendChild(card);
       }catch(e){ console.warn('renderMatch err:',e.message,m); }
@@ -1638,6 +1660,11 @@ function openModal(m,existing){
   document.getElementById('togPen').checked=CP.stats.penalties||false;
   // Masquer TAB pour phase de groupes
   document.getElementById('togPenRow').style.display=m.isKnockout?'flex':'none';
+  // Initialiser les variables de mode depuis CP
+  _scoreMode = CP.scoreMode || 'exact';
+  _ecart = CP.ecart || 0;
+  setScoreMode(_scoreMode);
+  updEcart();
   renderChips(m); updPts();
   // Charger questions bonus depuis Firestore
   _bonusQuestions = [];
@@ -2380,10 +2407,13 @@ function openModal(m, existing){
 
 function setScoreMode(mode){
   _scoreMode = mode;
+  if(CP) CP.scoreMode = mode;  // Sauvegarder dans CP pour l'enregistrement
   document.getElementById('smodeExact').classList.toggle('active', mode==='exact');
   document.getElementById('smodeEcart').classList.toggle('active', mode==='ecart');
-  document.getElementById('modeExactBox').classList.toggle('hidden', mode!=='exact');
-  document.getElementById('modeEcartBox').classList.toggle('hidden', mode!=='ecart');
+  var meb = document.getElementById('modeExactBox');
+  var ecb = document.getElementById('modeEcartBox');
+  if(meb) meb.classList.toggle('hidden', mode!=='exact');
+  if(ecb) ecb.classList.toggle('hidden', mode!=='ecart');
   updPts();
 }
 
@@ -2415,6 +2445,7 @@ function updEcart(){
 
 function changeEcart(d){
   _ecart = Math.max(-10, Math.min(10, _ecart + d));
+  if(CP) CP.ecart = _ecart;  // Sauvegarder dans CP
   updEcart();
 }
 
