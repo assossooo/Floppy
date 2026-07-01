@@ -462,6 +462,11 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
 #tab-ligue{padding-bottom:80px}
 #tab-profil{padding-bottom:80px!important}
 .tab-content{padding-bottom:80px}
+
+/* Onglets filtres matchs */
+.match-filter-tabs{display:flex;gap:8px;padding:0 4px 14px;position:sticky;top:0;background:#fafaf7;z-index:10}
+.mf-tab{flex:1;padding:10px 8px;border-radius:14px;border:1.5px solid #e0d9c8;background:#fff;font-size:13px;font-weight:700;color:#8a8266;cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent}
+.mf-tab.active{background:linear-gradient(135deg,#c9a227,#e0b94a);border-color:#c9a227;color:#fff;box-shadow:0 3px 10px rgba(201,162,39,.25)}
 </style>
 </head>
 <body>
@@ -556,6 +561,11 @@ body.dark-mode .mcard-datetime{color:var(--gold)!important}
       <div style="text-align:center;padding:16px 0 8px">
         <div style="font-size:22px;font-weight:900;color:#1a1a1a;letter-spacing:-.5px">⚽ Coupe du Monde 2026</div>
         <div style="font-size:13px;color:#a89f88;font-weight:600;margin-top:2px">Fais tes pronos et grimpe au classement !</div>
+      </div>
+      <div class="match-filter-tabs">
+        <button class="mf-tab active" data-filter="upcoming" onclick="setMatchFilter('upcoming')">🔵 À venir</button>
+        <button class="mf-tab" data-filter="past" onclick="setMatchFilter('past')">✅ Passés</button>
+        <button class="mf-tab" data-filter="all" onclick="setMatchFilter('all')">📅 Tous</button>
       </div>
       <div id="matchesList"></div>
     </div>
@@ -1162,34 +1172,38 @@ const CDM2026 = [
   {g:"Groupe L",d:"2026-06-23",t:"23:00",t1:"Panama",t2:"Croatia",v:"BMO Field"},
   {g:"Groupe L",d:"2026-06-27",t:"21:00",t1:"Croatia",t2:"Ghana",v:"BMO Field"},
   {g:"Groupe L",d:"2026-06-27",t:"21:00",t1:"England",t2:"Panama",v:"Lincoln Financial Field"},
-  {g:"16ème de finale",d:"2026-07-01",t:"19:00",t1:"1er Grp A",t2:"2ème Grp B",v:"MetLife Stadium"},
-  {g:"16ème de finale",d:"2026-07-01",t:"22:00",t1:"1er Grp C",t2:"2ème Grp D",v:"SoFi Stadium"},
-  {g:"16ème de finale",d:"2026-07-02",t:"19:00",t1:"1er Grp E",t2:"2ème Grp F",v:"AT&T Stadium"},
-  {g:"16ème de finale",d:"2026-07-02",t:"22:00",t1:"1er Grp G",t2:"2ème Grp H",v:"Rose Bowl"},
-  {g:"16ème de finale",d:"2026-07-03",t:"19:00",t1:"1er Grp I",t2:"2ème Grp J",v:"MetLife Stadium"},
-  {g:"16ème de finale",d:"2026-07-03",t:"22:00",t1:"1er Grp K",t2:"2ème Grp L",v:"SoFi Stadium"},
-  {g:"16ème de finale",d:"2026-07-04",t:"19:00",t1:"1er Grp B",t2:"2ème Grp A",v:"AT&T Stadium"},
-  {g:"16ème de finale",d:"2026-07-04",t:"22:00",t1:"1er Grp D",t2:"2ème Grp C",v:"Rose Bowl"},
-  {g:"16ème de finale",d:"2026-07-05",t:"19:00",t1:"1er Grp F",t2:"2ème Grp E",v:"MetLife Stadium"},
-  {g:"16ème de finale",d:"2026-07-05",t:"22:00",t1:"1er Grp H",t2:"2ème Grp G",v:"SoFi Stadium"},
-  {g:"16ème de finale",d:"2026-07-06",t:"19:00",t1:"1er Grp J",t2:"2ème Grp I",v:"AT&T Stadium"},
-  {g:"16ème de finale",d:"2026-07-06",t:"22:00",t1:"1er Grp L",t2:"2ème Grp K",v:"Rose Bowl"},
-  {g:"8ème de finale",d:"2026-07-09",t:"19:00",t1:"Vainqueur R1",t2:"Vainqueur R2",v:"MetLife Stadium"},
-  {g:"8ème de finale",d:"2026-07-09",t:"22:00",t1:"Vainqueur R3",t2:"Vainqueur R4",v:"SoFi Stadium"},
-  {g:"8ème de finale",d:"2026-07-10",t:"19:00",t1:"Vainqueur R5",t2:"Vainqueur R6",v:"AT&T Stadium"},
-  {g:"8ème de finale",d:"2026-07-10",t:"22:00",t1:"Vainqueur R7",t2:"Vainqueur R8",v:"Rose Bowl"},
-  {g:"8ème de finale",d:"2026-07-11",t:"19:00",t1:"Vainqueur R9",t2:"Vainqueur R10",v:"MetLife Stadium"},
-  {g:"8ème de finale",d:"2026-07-11",t:"22:00",t1:"Vainqueur R11",t2:"Vainqueur R12",v:"SoFi Stadium"},
-  {g:"8ème de finale",d:"2026-07-12",t:"19:00",t1:"Vainqueur R13",t2:"Vainqueur R14",v:"AT&T Stadium"},
-  {g:"8ème de finale",d:"2026-07-12",t:"22:00",t1:"Vainqueur R15",t2:"Vainqueur R16",v:"Rose Bowl"},
-  {g:"Quart de finale",d:"2026-07-14",t:"19:00",t1:"Vainqueur QF1",t2:"Vainqueur QF2",v:"MetLife Stadium"},
-  {g:"Quart de finale",d:"2026-07-14",t:"22:00",t1:"Vainqueur QF3",t2:"Vainqueur QF4",v:"SoFi Stadium"},
-  {g:"Quart de finale",d:"2026-07-15",t:"19:00",t1:"Vainqueur QF5",t2:"Vainqueur QF6",v:"AT&T Stadium"},
-  {g:"Quart de finale",d:"2026-07-15",t:"22:00",t1:"Vainqueur QF7",t2:"Vainqueur QF8",v:"Rose Bowl"},
-  {g:"Demi-finale",d:"2026-07-17",t:"19:00",t1:"Vainqueur SF1",t2:"Vainqueur SF2",v:"MetLife Stadium"},
-  {g:"Demi-finale",d:"2026-07-17",t:"22:00",t1:"Vainqueur SF3",t2:"Vainqueur SF4",v:"AT&T Stadium"},
-  {g:"Petite finale",d:"2026-07-18",t:"19:00",t1:"Perdant SF1",t2:"Perdant SF2",v:"SoFi Stadium"},
-  {g:"Finale",d:"2026-07-19",t:"19:00",t1:"Vainqueur SF1",t2:"Vainqueur SF2",v:"MetLife Stadium"},
+  {g:"16es de finale",d:"2026-06-28",t:"19:00",t1:"South Africa",t2:"Canada",v:"Los Angeles Stadium"},
+  {g:"16es de finale",d:"2026-06-29",t:"19:00",t1:"Brazil",t2:"Japan",v:"Houston Stadium"},
+  {g:"16es de finale",d:"2026-06-29",t:"22:00",t1:"Germany",t2:"Paraguay",v:"Boston Stadium"},
+  {g:"16es de finale",d:"2026-06-30",t:"19:00",t1:"Netherlands",t2:"Morocco",v:"Houston Stadium"},
+  {g:"16es de finale",d:"2026-06-30",t:"22:00",t1:"Ivory Coast",t2:"Norway",v:"Dallas Stadium"},
+  {g:"16es de finale",d:"2026-07-01",t:"23:00",t1:"France",t2:"Sweden",v:"New York New Jersey Stadium"},
+  {g:"16es de finale",d:"2026-07-01",t:"20:00",t1:"Mexico",t2:"Ecuador",v:"Mexico City Stadium"},
+  {g:"16es de finale",d:"2026-07-02",t:"01:00",t1:"USA",t2:"Bosnia and Herzegovina",v:"San Francisco Bay Area Stadium"},
+  {g:"16es de finale",d:"2026-07-02",t:"01:00",t1:"England",t2:"DR Congo",v:"Atlanta Stadium"},
+  {g:"16es de finale",d:"2026-07-02",t:"22:00",t1:"Spain",t2:"Austria",v:"Los Angeles Stadium"},
+  {g:"16es de finale",d:"2026-07-03",t:"02:00",t1:"Portugal",t2:"Croatia",v:"Toronto Stadium"},
+  {g:"16es de finale",d:"2026-07-03",t:"06:00",t1:"Switzerland",t2:"Algeria",v:"BC Place Vancouver"},
+  {g:"16es de finale",d:"2026-07-02",t:"19:00",t1:"Australia",t2:"Egypt",v:"Dallas Stadium"},
+  {g:"16es de finale",d:"2026-07-02",t:"23:00",t1:"Argentina",t2:"Cape Verde",v:"Miami Stadium"},
+  {g:"16es de finale",d:"2026-07-03",t:"19:00",t1:"Belgium",t2:"Senegal",v:"Seattle Stadium"},
+  {g:"16es de finale",d:"2026-07-04",t:"02:30",t1:"Colombia",t2:"Ghana",v:"Kansas City Stadium"},
+  {g:"8es de finale",d:"2026-07-04",t:"19:00",t1:"Vainqueur 8e1",t2:"Vainqueur 8e2",v:"Houston Stadium"},
+  {g:"8es de finale",d:"2026-07-05",t:"19:00",t1:"Vainqueur 8e3",t2:"Vainqueur 8e4",v:"Dallas Stadium"},
+  {g:"8es de finale",d:"2026-07-05",t:"22:00",t1:"Vainqueur 8e5",t2:"Vainqueur 8e6",v:"Los Angeles Stadium"},
+  {g:"8es de finale",d:"2026-07-06",t:"19:00",t1:"Vainqueur 8e7",t2:"Vainqueur 8e8",v:"Atlanta Stadium"},
+  {g:"8es de finale",d:"2026-07-06",t:"22:00",t1:"Vainqueur 8e9",t2:"Vainqueur 8e10",v:"Seattle Stadium"},
+  {g:"8es de finale",d:"2026-07-07",t:"19:00",t1:"Vainqueur 8e11",t2:"Vainqueur 8e12",v:"Miami Stadium"},
+  {g:"8es de finale",d:"2026-07-07",t:"22:00",t1:"Vainqueur 8e13",t2:"Vainqueur 8e14",v:"Kansas City Stadium"},
+  {g:"8es de finale",d:"2026-07-08",t:"19:00",t1:"Vainqueur 8e15",t2:"Vainqueur 8e16",v:"San Francisco Bay Area Stadium"},
+  {g:"Quarts de finale",d:"2026-07-10",t:"22:00",t1:"Vainqueur QF1",t2:"Vainqueur QF2",v:"Boston Stadium"},
+  {g:"Quarts de finale",d:"2026-07-11",t:"19:00",t1:"Vainqueur QF3",t2:"Vainqueur QF4",v:"Los Angeles Stadium"},
+  {g:"Quarts de finale",d:"2026-07-11",t:"22:00",t1:"Vainqueur QF5",t2:"Vainqueur QF6",v:"Miami Stadium"},
+  {g:"Quarts de finale",d:"2026-07-12",t:"21:00",t1:"Vainqueur QF7",t2:"Vainqueur QF8",v:"Kansas City Stadium"},
+  {g:"Demi-finales",d:"2026-07-14",t:"21:00",t1:"Vainqueur DF1",t2:"Vainqueur DF2",v:"Dallas Stadium"},
+  {g:"Demi-finales",d:"2026-07-15",t:"21:00",t1:"Vainqueur DF3",t2:"Vainqueur DF4",v:"Atlanta Stadium"},
+  {g:"Match 3e place",d:"2026-07-18",t:"21:00",t1:"Perdant DF1",t2:"Perdant DF2",v:"Miami Stadium"},
+  {g:"Finale",d:"2026-07-19",t:"21:00",t1:"Finaliste 1",t2:"Finaliste 2",v:"New York New Jersey Stadium"},
 ];
 
 function buildMatchesFromEmbedded() {
@@ -1589,9 +1603,32 @@ function renderMatches(){
   c.innerHTML='';
   var userPronos={};
   try{ MATCHES.forEach(function(m){ var v=localStorage.getItem('mfm_'+(CL?CL.id:'')+'_'+(CU?CU.uid:'')+'_'+m.id); if(v)userPronos[m.id]=JSON.parse(v); }); }catch(e){}
-  var sorted=MATCHES.slice().sort(function(a,b){ var da=a.date+'T'+a.time,db2=b.date+'T'+b.time; return da<db2?-1:da>db2?1:0; });
+  var nowTs = new Date();
+  var filtered = MATCHES.filter(function(m){
+    var mdt = new Date(m.date+'T'+m.time+':00Z');
+    var hasResult = !!realResults[m.id];
+    var isLive = m.status==='in_progress';
+    var isPast = hasResult || (mdt < nowTs && !isLive);
+    if(_matchFilter === 'upcoming') return !isPast;  // à venir + live
+    if(_matchFilter === 'past') return isPast;
+    return true;  // all
+  });
+  var sorted = filtered.slice().sort(function(a,b){ 
+    var da=a.date+'T'+a.time, db2=b.date+'T'+b.time; 
+    // Pour les matchs passés, ordre inverse (plus récent en premier)
+    if(_matchFilter === 'past') return da<db2?1:da>db2?-1:0;
+    return da<db2?-1:da>db2?1:0; 
+  });
   var days={},dayOrder=[];
   sorted.forEach(function(m){ if(!days[m.date]){ days[m.date]=[]; dayOrder.push(m.date); } days[m.date].push(m); });
+  if(sorted.length === 0){
+    c.innerHTML = '<div style="text-align:center;padding:50px 20px;color:#a89f88">'
+      +'<div style="font-size:44px;margin-bottom:12px">'+(_matchFilter==='past'?'📭':'📅')+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#1a1a1a">'+(_matchFilter==='past'?'Aucun match passé':'Aucun match à venir')+'</div>'
+      +'<div style="font-size:13px;margin-top:4px">'+(_matchFilter==='past'?'Les résultats apparaîtront ici':'Reviens bientôt !')+'</div>'
+      +'</div>';
+    return;
+  }
   dayOrder.forEach(function(day){
     var d=new Date(day+'T12:00:00Z');
     var label=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
@@ -2293,6 +2330,14 @@ function renderMatches(){
     days[m.date].push(m);
   });
 
+  if(sorted.length === 0){
+    c.innerHTML = '<div style="text-align:center;padding:50px 20px;color:#a89f88">'
+      +'<div style="font-size:44px;margin-bottom:12px">'+(_matchFilter==='past'?'📭':'📅')+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#1a1a1a">'+(_matchFilter==='past'?'Aucun match passé':'Aucun match à venir')+'</div>'
+      +'<div style="font-size:13px;margin-top:4px">'+(_matchFilter==='past'?'Les résultats apparaîtront ici':'Reviens bientôt !')+'</div>'
+      +'</div>';
+    return;
+  }
   dayOrder.forEach(function(day){
     var d=new Date(day+'T12:00:00Z');
     var label=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
@@ -3460,6 +3505,15 @@ function showPredictions(){
   } else {
     overlay.style.display = 'flex';
   }
+}
+// ── FILTRE MATCHS (À venir / Passés / Tous) ──────────────────
+var _matchFilter = 'upcoming';
+function setMatchFilter(f){
+  _matchFilter = f;
+  document.querySelectorAll('.mf-tab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.filter === f);
+  });
+  renderMatches();
 }
 </script>
 </body>
